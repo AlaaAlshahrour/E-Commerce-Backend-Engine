@@ -2,12 +2,14 @@
 
 namespace Database\Factories;
 
+use App\Models\Cart;
 use App\Models\CartItem;
-use Illuminate\Database\Eloquent\Factories\Factory;
-
 /**
  * @extends Factory<CartItem>
  */
+use App\Models\Product;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
 class CartItemFactory extends Factory
 {
     /**
@@ -18,7 +20,9 @@ class CartItemFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'product_id' => Product::factory(),
+            'cart_id' => Cart::factory(),
+            'quantity' => fake()->numberBetween(1, 5),
         ];
     }
 }

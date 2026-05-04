@@ -1,0 +1,352 @@
+// === FULL PROJECT COMPACT EXPORT ===
+
+// === [Controllers] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\AuthController.php =====
+namespace App\Http\Controllers\Api;class AuthController extends Controller{public function register(RegisterRequest $request): JsonResponse{$user = User::create([
+'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'User registered successfully',201);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return ResponseHelper::jsonResponse(null,'Invalid credentials',401,false);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'Login successful');}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return ResponseHelper::jsonResponse(null,'Logged out successfully');}public function me(Request $request): JsonResponse{return ResponseHelper::jsonResponse($request->user(),'User profile retrieved');}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\CategoryController.php =====
+namespace App\Http\Controllers\Api;class CategoryController extends Controller{public function index(){$categories = Category::all();return ResponseHelper::jsonResponse($categories,'Categories retrieved successfully');}public function store(StoreCategoryRequest $request){$category = Category::create($request->validated());return ResponseHelper::jsonResponse($category,'Category created successfully',201);}public function show(Category $category){return ResponseHelper::jsonResponse($category,'Category retrieved successfully');}public function update(UpdateCategoryRequest $request,Category $category){$category->update($request->validated());return ResponseHelper::jsonResponse($category,'Category updated successfully');}public function destroy(Category $category){$category->delete();return ResponseHelper::jsonResponse(null,'Category deleted successfully');}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Controller.php =====
+namespace App\Http\Controllers;abstract class Controller{}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\ProductController.php =====
+namespace App\Http\Controllers\Api;class ProductController extends Controller{public function index(Request $request){$query = Product::with('category');if($request->category_id){$query->where('category_id',$request->category_id);}if($request->min_price){$query->where('price','>=',$request->min_price);}if($request->max_price){$query->where('price','<=',$request->max_price);}if($request->search){$query->where('name','like',"%{$request->search}%");}$products = $query->paginate(10);return ResponseHelper::jsonResponse($products,'Products retrieved successfully');}public function store(StoreProductRequest $request){$data = $request->validated();if($request->hasFile('image')){$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product = Product::create($data);return ResponseHelper::jsonResponse($product,'Product created successfully',201);}public function show(Product $product){return ResponseHelper::jsonResponse($product->load('category'),'Product retrieved successfully');}public function update(UpdateProductRequest $request,Product $product){$data = $request->validated();if($request->hasFile('image')){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product->update($data);return ResponseHelper::jsonResponse($product,'Product updated successfully');}public function destroy(Product $product){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$product->delete();return ResponseHelper::jsonResponse(null,'Product deleted successfully');}}
+
+// === [ApiControllers] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\AuthController.php =====
+namespace App\Http\Controllers\Api;class AuthController extends Controller{public function register(RegisterRequest $request): JsonResponse{$user = User::create([
+'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'User registered successfully',201);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return ResponseHelper::jsonResponse(null,'Invalid credentials',401,false);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'Login successful');}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return ResponseHelper::jsonResponse(null,'Logged out successfully');}public function me(Request $request): JsonResponse{return ResponseHelper::jsonResponse($request->user(),'User profile retrieved');}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\CategoryController.php =====
+namespace App\Http\Controllers\Api;class CategoryController extends Controller{public function index(){$categories = Category::all();return ResponseHelper::jsonResponse($categories,'Categories retrieved successfully');}public function store(StoreCategoryRequest $request){$category = Category::create($request->validated());return ResponseHelper::jsonResponse($category,'Category created successfully',201);}public function show(Category $category){return ResponseHelper::jsonResponse($category,'Category retrieved successfully');}public function update(UpdateCategoryRequest $request,Category $category){$category->update($request->validated());return ResponseHelper::jsonResponse($category,'Category updated successfully');}public function destroy(Category $category){$category->delete();return ResponseHelper::jsonResponse(null,'Category deleted successfully');}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\ProductController.php =====
+namespace App\Http\Controllers\Api;class ProductController extends Controller{public function index(Request $request){$query = Product::with('category');if($request->category_id){$query->where('category_id',$request->category_id);}if($request->min_price){$query->where('price','>=',$request->min_price);}if($request->max_price){$query->where('price','<=',$request->max_price);}if($request->search){$query->where('name','like',"%{$request->search}%");}$products = $query->paginate(10);return ResponseHelper::jsonResponse($products,'Products retrieved successfully');}public function store(StoreProductRequest $request){$data = $request->validated();if($request->hasFile('image')){$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product = Product::create($data);return ResponseHelper::jsonResponse($product,'Product created successfully',201);}public function show(Product $product){return ResponseHelper::jsonResponse($product->load('category'),'Product retrieved successfully');}public function update(UpdateProductRequest $request,Product $product){$data = $request->validated();if($request->hasFile('image')){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product->update($data);return ResponseHelper::jsonResponse($product,'Product updated successfully');}public function destroy(Product $product){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$product->delete();return ResponseHelper::jsonResponse(null,'Product deleted successfully');}}
+
+// === [Models] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Cart.php =====
+namespace App\Models;class Cart extends Model{use HasFactory;protected $guarded = [];public function user(){return $this->belongsTo(User::class);}public function items(){return $this->hasMany(CartItem::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\CartItem.php =====
+namespace App\Models;class CartItem extends Model{use HasFactory;protected $guarded = [];public function cart(){return $this->belongsTo(Cart::class);}public function product(){return $this->belongsTo(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Category.php =====
+namespace App\Models;class Category extends Model{use HasFactory;protected $guarded = [];public function products(){return $this->hasMany(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Inventory.php =====
+namespace App\Models;class Inventory extends Model{use HasFactory;protected $guarded = [];public function product(){return $this->belongsTo(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Order.php =====
+namespace App\Models;class Order extends Model{use HasFactory;protected $guarded = [];public function user(){return $this->belongsTo(User::class);}public function items(){return $this->hasMany(OrderItem::class);}public function payments(){return $this->hasMany(Payment::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\OrderItem.php =====
+namespace App\Models;class OrderItem extends Model{use HasFactory;protected $guarded = [];public function order(){return $this->belongsTo(Order::class);}public function product(){return $this->belongsTo(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Payment.php =====
+namespace App\Models;class Payment extends Model{use HasFactory;protected $guarded = [];public function order(){return $this->belongsTo(Order::class);}public function transaction(){return $this->belongsTo(Transaction::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Product.php =====
+namespace App\Models;class Product extends Model{use HasFactory;protected $guarded = [];public function category(){return $this->belongsTo(Category::class);}public function inventories(){return $this->hasMany(Inventory::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Transaction.php =====
+namespace App\Models;class Transaction extends Model{use HasFactory;protected $guarded = [];public function wallet(){return $this->belongsTo(Wallet::class);}public function payment(){return $this->hasOne(Payment::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\User.php =====
+namespace App\Models;class User extends Authenticatable{use HasApiTokens,HasFactory,Notifiable;protected function casts(): array{return [
+'email_verified_at' => 'datetime','password' => 'hashed',];}public function carts(){return $this->hasOne(Cart::class);}public function orders(){return $this->hasMany(Order::class);}public function wallet(){return $this->hasOne(Wallet::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Wallet.php =====
+namespace App\Models;class Wallet extends Model{use HasFactory;protected $guarded = [];public function user(){return $this->belongsTo(User::class);}public function transactions(){return $this->hasMany(Transaction::class);}}
+
+// === [Migrations] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\0001_01_01_000000_create_users_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('users',function(Blueprint $table){$table->id();$table->string('name');$table->string('email')->unique();$table->timestamp('email_verified_at')->nullable();$table->string('password');$table->rememberToken();$table->timestamps();});Schema::create('password_reset_tokens',function(Blueprint $table){$table->string('email')->primary();$table->string('token');$table->timestamp('created_at')->nullable();});Schema::create('sessions',function(Blueprint $table){$table->string('id')->primary();$table->foreignId('user_id')->nullable()->index();$table->string('ip_address',45)->nullable();$table->text('user_agent')->nullable();$table->longText('payload');$table->integer('last_activity')->index();});}public function down(): void{Schema::dropIfExists('users');Schema::dropIfExists('password_reset_tokens');Schema::dropIfExists('sessions');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\0001_01_01_000001_create_cache_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('cache',function(Blueprint $table){$table->string('key')->primary();$table->mediumText('value');$table->bigInteger('expiration')->index();});Schema::create('cache_locks',function(Blueprint $table){$table->string('key')->primary();$table->string('owner');$table->bigInteger('expiration')->index();});}public function down(): void{Schema::dropIfExists('cache');Schema::dropIfExists('cache_locks');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\0001_01_01_000002_create_jobs_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('jobs',function(Blueprint $table){$table->id();$table->string('queue')->index();$table->longText('payload');$table->unsignedSmallInteger('attempts');$table->unsignedInteger('reserved_at')->nullable();$table->unsignedInteger('available_at');$table->unsignedInteger('created_at');});Schema::create('job_batches',function(Blueprint $table){$table->string('id')->primary();$table->string('name');$table->integer('total_jobs');$table->integer('pending_jobs');$table->integer('failed_jobs');$table->longText('failed_job_ids');$table->mediumText('options')->nullable();$table->integer('cancelled_at')->nullable();$table->integer('created_at');$table->integer('finished_at')->nullable();});Schema::create('failed_jobs',function(Blueprint $table){$table->id();$table->string('uuid')->unique();$table->text('connection');$table->text('queue');$table->longText('payload');$table->longText('exception');$table->timestamp('failed_at')->useCurrent();});}public function down(): void{Schema::dropIfExists('jobs');Schema::dropIfExists('job_batches');Schema::dropIfExists('failed_jobs');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045209_create_categories_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('categories',function(Blueprint $table){$table->id();$table->string('name');$table->timestamps();});}public function down(): void{Schema::dropIfExists('categories');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045210_create_products_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('products',function(Blueprint $table){$table->id();$table->string('name');$table->text('description');$table->decimal('price',10,2);$table->string('photo_url')->nullable();$table->foreignIdFor(Category::class)->constrained();$table->timestamps();});}public function down(): void{Schema::dropIfExists('products');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045211_create_inventories_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('inventories',function(Blueprint $table){$table->id();$table->foreignIdFor(Product::class)->constrained();$table->integer('quantity');$table->timestamps();});}public function down(): void{Schema::dropIfExists('inventories');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045212_create_carts_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('carts',function(Blueprint $table){$table->id();$table->foreignIdFor(User::class)->constrained();$table->timestamps();});}public function down(): void{Schema::dropIfExists('carts');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045213_create_cart_items_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('cart_items',function(Blueprint $table){$table->id();$table->foreignIdFor(Product::class)->constrained();$table->foreignIdFor(Cart::class)->constrained();$table->integer('quantity');$table->timestamps();});}public function down(): void{Schema::dropIfExists('cart_items');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045214_create_orders_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('orders',function(Blueprint $table){$table->id();$table->foreignIdFor(User::class)->constrained();$table->enum('status',['Processing','Canceled','Completed','pending']);$table->decimal('total_amount',10,2);$table->text('shipping_address');$table->enum('payment_method',['wallet','card','cash']);$table->enum('payment_status',['pending','paid','failed','refunded']);$table->timestamps();});}public function down(): void{Schema::dropIfExists('orders');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045215_create_order_items_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('order_items',function(Blueprint $table){$table->id();$table->foreignIdFor(Product::class)->constrained();$table->foreignIdFor(Order::class)->constrained();$table->integer('quantity');$table->decimal('unit_price');$table->timestamps();});}public function down(): void{Schema::dropIfExists('order_items');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045216_create_wallets_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('wallets',function(Blueprint $table){$table->id();$table->foreignIdFor(User::class)->constrained();$table->decimal('balance',10,2);$table->boolean('is_active');$table->timestamps();});}public function down(): void{Schema::dropIfExists('wallets');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045217_create_transactions_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('transactions',function(Blueprint $table){$table->id();$table->foreignIdFor(Wallet::class)->constrained();$table->decimal('amount',10,2);$table->decimal('balance_before',10,2);$table->decimal('balance_after',10,2);$table->enum('type',['deposit','withdraw','payment','refund']);$table->enum('status',['pending','completed','failed']);$table->enum('reference_type',['order','topup','refund']);$table->integer('reference_id')->nullable();$table->timestamps();});}public function down(): void{Schema::dropIfExists('transactions');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045218_create_payments_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('payments',function(Blueprint $table){$table->id();$table->foreignIdFor(Order::class)->constrained();$table->enum('type',['payment','refund']);$table->decimal('amount',10,2);$table->enum('status',['pending','completed','failed']);$table->foreignIdFor(Transaction::class)->constrained();$table->timestamps();});}public function down(): void{Schema::dropIfExists('payments');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_04_111058_create_personal_access_tokens_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('personal_access_tokens',function(Blueprint $table){$table->id();$table->morphs('tokenable');$table->text('name');$table->string('token',64)->unique();$table->text('abilities')->nullable();$table->timestamp('last_used_at')->nullable();$table->timestamp('expires_at')->nullable()->index();$table->timestamps();});}public function down(): void{Schema::dropIfExists('personal_access_tokens');}};
+
+// === [Seeders] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartItemSeeder.php =====
+namespace Database\Seeders;class CartItemSeeder extends Seeder{public function run(): void{CartItem::factory(10)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartSeeder.php =====
+namespace Database\Seeders;class CartSeeder extends Seeder{public function run(): void{Cart::factory(5)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CategorySeeder.php =====
+namespace Database\Seeders;class CategorySeeder extends Seeder{public function run(): void{Category::factory(5)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\DatabaseSeeder.php =====
+namespace Database\Seeders;class DatabaseSeeder extends Seeder{use WithoutModelEvents;public function run(): void{$this->call([
+UserSeeder::class,CategorySeeder::class,ProductSeeder::class,InventorySeeder::class,WalletSeeder::class,CartSeeder::class,CartItemSeeder::class,OrderSeeder::class,OrderItemSeeder::class,TransactionSeeder::class,PaymentSeeder::class,]);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\InventorySeeder.php =====
+namespace Database\Seeders;class InventorySeeder extends Seeder{public function run(): void{Inventory::factory(10)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\OrderItemSeeder.php =====
+namespace Database\Seeders;class OrderItemSeeder extends Seeder{public function run(): void{OrderItem::factory(20)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\OrderSeeder.php =====
+namespace Database\Seeders;class OrderSeeder extends Seeder{public function run(): void{Order::factory(10)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\PaymentSeeder.php =====
+namespace Database\Seeders;class PaymentSeeder extends Seeder{public function run(): void{Payment::factory(10)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\ProductSeeder.php =====
+namespace Database\Seeders;class ProductSeeder extends Seeder{public function run(): void{Product::factory(20)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\TransactionSeeder.php =====
+namespace Database\Seeders;class TransactionSeeder extends Seeder{public function run(): void{Transaction::factory(20)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\UserSeeder.php =====
+namespace Database\Seeders;class UserSeeder extends Seeder{public function run(): void{User::factory(10)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\WalletSeeder.php =====
+namespace Database\Seeders;class WalletSeeder extends Seeder{public function run(): void{Wallet::factory(10)->create();}}
+
+// === [Factories] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartFactory.php =====
+namespace Database\Factories;class CartFactory extends Factory{public function definition(): array{return [
+'user_id' => User::factory(),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartItemFactory.php =====
+namespace Database\Factories;class CartItemFactory extends Factory{public function definition(): array{return [
+'product_id' => Product::factory(),'cart_id' => Cart::factory(),'quantity' => fake()->numberBetween(1,5),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CategoryFactory.php =====
+namespace Database\Factories;class CategoryFactory extends Factory{public function definition(): array{return [
+'name' => fake()->words(2,true),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\InventoryFactory.php =====
+namespace Database\Factories;class InventoryFactory extends Factory{public function definition(): array{return [
+'product_id' => Product::factory(),'quantity' => fake()->numberBetween(0,100),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\OrderFactory.php =====
+namespace Database\Factories;class OrderFactory extends Factory{public function definition(): array{return [
+'user_id' => User::factory(),'status' => fake()->randomElement(['Processing','Canceled','Completed','pending']),'total_amount' => fake()->randomFloat(2,50,2000),'shipping_address' => fake()->address(),'payment_method' => fake()->randomElement(['wallet','card','cash']),'payment_status' => fake()->randomElement(['pending','paid','failed','refunded']),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\OrderItemFactory.php =====
+namespace Database\Factories;class OrderItemFactory extends Factory{public function definition(): array{return [
+'product_id' => Product::factory(),'order_id' => Order::factory(),'quantity' => fake()->numberBetween(1,5),'unit_price' => fake()->randomFloat(2,10,500),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\PaymentFactory.php =====
+namespace Database\Factories;class PaymentFactory extends Factory{public function definition(): array{return [
+'order_id' => Order::factory(),'type' => fake()->randomElement(['payment','refund']),'amount' => fake()->randomFloat(2,10,2000),'status' => fake()->randomElement(['pending','completed','failed']),'transaction_id' => Transaction::factory(),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\ProductFactory.php =====
+namespace Database\Factories;class ProductFactory extends Factory{public function definition(): array{return [
+'name' => fake()->words(3,true),'description' => fake()->paragraph(),'price' => fake()->randomFloat(2,10,1000),'photo_url' => fake()->imageUrl(),'category_id' => Category::factory(),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\TransactionFactory.php =====
+namespace Database\Factories;class TransactionFactory extends Factory{public function definition(): array{$amount = fake()->randomFloat(2,10,1000);$balanceBefore = fake()->randomFloat(2,1000,5000);return [
+'wallet_id' => Wallet::factory(),'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore + $amount,'type' => fake()->randomElement(['deposit','withdraw','payment','refund']),'status' => fake()->randomElement(['pending','completed','failed']),'reference_type' => fake()->randomElement(['order','topup','refund']),'reference_id' => fake()->numberBetween(1,1000),];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\UserFactory.php =====
+namespace Database\Factories;class UserFactory extends Factory{protected static ?string $password;public function definition(): array{return [
+'name' => fake()->name(),'email' => fake()->unique()->safeEmail(),'email_verified_at' => now(),'password' => static::$password ??= Hash::make('password'),'remember_token' => Str::random(10),];}public function unverified(): static{return $this->state(fn(array $attributes)=> [
+'email_verified_at' => null,]);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\WalletFactory.php =====
+namespace Database\Factories;class WalletFactory extends Factory{public function definition(): array{return [
+'user_id' => User::factory(),'balance' => fake()->randomFloat(2,0,10000),'is_active' => true,];}}
+
+// === [Requests] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
+namespace App\Http\Requests;class LoginRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'email' => ['required','email'],'password' => ['required','string','min:6'],];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\RegisterRequest.php =====
+namespace App\Http\Requests;class RegisterRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => ['required','string','max:255'],'email' => ['required','email','unique:users,email'],'password' => ['required','min:6','confirmed'],];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreCategoryRequest.php =====
+namespace App\Http\Requests;class StoreCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'required|string|max:255|unique:categories,name',];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreProductRequest.php =====
+namespace App\Http\Requests;class StoreProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'required|string|max:255','description' => 'required|string','price' => 'required|numeric|min:0','category_id' => 'required|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateCategoryRequest.php =====
+namespace App\Http\Requests;class UpdateCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'sometimes|string|max:255|unique:categories,name,' . $this->route('category')->id,];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateProductRequest.php =====
+namespace App\Http\Requests;class UpdateProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'sometimes|string|max:255','description' => 'sometimes|string','price' => 'sometimes|numeric|min:0','category_id' => 'sometimes|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+];}}
+
+// === [Config] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\app.php =====
+return [
+'name' => env('APP_NAME','Laravel'),'env' => env('APP_ENV','production'),'debug' =>(bool)env('APP_DEBUG',false),'url' => env('APP_URL','http:
+'timezone' => 'UTC','locale' => env('APP_LOCALE','en'),'fallback_locale' => env('APP_FALLBACK_LOCALE','en'),'faker_locale' => env('APP_FAKER_LOCALE','en_US'),'cipher' => 'AES-256-CBC','key' => env('APP_KEY'),'previous_keys' => [
+...array_filter(explode(',',(string)env('APP_PREVIOUS_KEYS',''))),],'maintenance' => [
+'driver' => env('APP_MAINTENANCE_DRIVER','file'),'store' => env('APP_MAINTENANCE_STORE','database'),],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\auth.php =====
+return [
+'defaults' => [
+'guard' => env('AUTH_GUARD','web'),'passwords' => env('AUTH_PASSWORD_BROKER','users'),],'guards' => [
+'web' => [
+'driver' => 'session','provider' => 'users',],],'providers' => [
+'users' => [
+'driver' => 'eloquent','model' => env('AUTH_MODEL',User::class),],],'passwords' => [
+'users' => [
+'provider' => 'users','table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE','password_reset_tokens'),'expire' => 60,'throttle' => 60,],],'password_timeout' => env('AUTH_PASSWORD_TIMEOUT',10800),];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\cache.php =====
+return [
+'default' => env('CACHE_STORE','database'),'stores' => [
+'array' => [
+'driver' => 'array','serialize' => false,],'database' => [
+'driver' => 'database','connection' => env('DB_CACHE_CONNECTION'),'table' => env('DB_CACHE_TABLE','cache'),'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),'lock_table' => env('DB_CACHE_LOCK_TABLE'),],'file' => [
+'driver' => 'file','path' => storage_path('framework/cache/data'),'lock_path' => storage_path('framework/cache/data'),],'memcached' => [
+'driver' => 'memcached','persistent_id' => env('MEMCACHED_PERSISTENT_ID'),'sasl' => [
+env('MEMCACHED_USERNAME'),env('MEMCACHED_PASSWORD'),],'options' => [
+],'servers' => [
+[
+'host' => env('MEMCACHED_HOST','127.0.0.1'),'port' => env('MEMCACHED_PORT',11211),'weight' => 100,],],],'redis' => [
+'driver' => 'redis','connection' => env('REDIS_CACHE_CONNECTION','cache'),'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION','default'),],'dynamodb' => [
+'driver' => 'dynamodb','key' => env('AWS_ACCESS_KEY_ID'),'secret' => env('AWS_SECRET_ACCESS_KEY'),'region' => env('AWS_DEFAULT_REGION','us-east-1'),'table' => env('DYNAMODB_CACHE_TABLE','cache'),'endpoint' => env('DYNAMODB_ENDPOINT'),],'octane' => [
+'driver' => 'octane',],'failover' => [
+'driver' => 'failover','stores' => [
+'database','array',],],],'prefix' => env('CACHE_PREFIX',Str::slug((string)env('APP_NAME','laravel')).'-cache-'),'serializable_classes' => false,];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\database.php =====
+return [
+'default' => env('DB_CONNECTION','sqlite'),'connections' => [
+'sqlite' => [
+'driver' => 'sqlite','url' => env('DB_URL'),'database' => env('DB_DATABASE',database_path('database.sqlite')),'prefix' => '','foreign_key_constraints' => env('DB_FOREIGN_KEYS',true),'busy_timeout' => null,'journal_mode' => null,'synchronous' => null,'transaction_mode' => 'DEFERRED',],'mysql' => [
+'driver' => 'mysql','url' => env('DB_URL'),'host' => env('DB_HOST','127.0.0.1'),'port' => env('DB_PORT','3306'),'database' => env('DB_DATABASE','laravel'),'username' => env('DB_USERNAME','root'),'password' => env('DB_PASSWORD',''),'unix_socket' => env('DB_SOCKET',''),'charset' => env('DB_CHARSET','utf8mb4'),'collation' => env('DB_COLLATION','utf8mb4_unicode_ci'),'prefix' => '','prefix_indexes' => true,'strict' => true,'engine' => null,'options' => extension_loaded('pdo_mysql')? array_filter([(PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA)=> env('MYSQL_ATTR_SSL_CA'),]): [],],'mariadb' => [
+'driver' => 'mariadb','url' => env('DB_URL'),'host' => env('DB_HOST','127.0.0.1'),'port' => env('DB_PORT','3306'),'database' => env('DB_DATABASE','laravel'),'username' => env('DB_USERNAME','root'),'password' => env('DB_PASSWORD',''),'unix_socket' => env('DB_SOCKET',''),'charset' => env('DB_CHARSET','utf8mb4'),'collation' => env('DB_COLLATION','utf8mb4_unicode_ci'),'prefix' => '','prefix_indexes' => true,'strict' => true,'engine' => null,'options' => extension_loaded('pdo_mysql')? array_filter([(PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA)=> env('MYSQL_ATTR_SSL_CA'),]): [],],'pgsql' => [
+'driver' => 'pgsql','url' => env('DB_URL'),'host' => env('DB_HOST','127.0.0.1'),'port' => env('DB_PORT','5432'),'database' => env('DB_DATABASE','laravel'),'username' => env('DB_USERNAME','root'),'password' => env('DB_PASSWORD',''),'charset' => env('DB_CHARSET','utf8'),'prefix' => '','prefix_indexes' => true,'search_path' => 'public','sslmode' => env('DB_SSLMODE','prefer'),],'sqlsrv' => [
+'driver' => 'sqlsrv','url' => env('DB_URL'),'host' => env('DB_HOST','localhost'),'port' => env('DB_PORT','1433'),'database' => env('DB_DATABASE','laravel'),'username' => env('DB_USERNAME','root'),'password' => env('DB_PASSWORD',''),'charset' => env('DB_CHARSET','utf8'),'prefix' => '','prefix_indexes' => true,],],'migrations' => [
+'table' => 'migrations','update_date_on_publish' => true,],'redis' => [
+'client' => env('REDIS_CLIENT','phpredis'),'options' => [
+'cluster' => env('REDIS_CLUSTER','redis'),'prefix' => env('REDIS_PREFIX',Str::slug((string)env('APP_NAME','laravel')).'-database-'),'persistent' => env('REDIS_PERSISTENT',false),],'default' => [
+'url' => env('REDIS_URL'),'host' => env('REDIS_HOST','127.0.0.1'),'username' => env('REDIS_USERNAME'),'password' => env('REDIS_PASSWORD'),'port' => env('REDIS_PORT','6379'),'database' => env('REDIS_DB','0'),'max_retries' => env('REDIS_MAX_RETRIES',3),'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM','decorrelated_jitter'),'backoff_base' => env('REDIS_BACKOFF_BASE',100),'backoff_cap' => env('REDIS_BACKOFF_CAP',1000),],'cache' => [
+'url' => env('REDIS_URL'),'host' => env('REDIS_HOST','127.0.0.1'),'username' => env('REDIS_USERNAME'),'password' => env('REDIS_PASSWORD'),'port' => env('REDIS_PORT','6379'),'database' => env('REDIS_CACHE_DB','1'),'max_retries' => env('REDIS_MAX_RETRIES',3),'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM','decorrelated_jitter'),'backoff_base' => env('REDIS_BACKOFF_BASE',100),'backoff_cap' => env('REDIS_BACKOFF_CAP',1000),],],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\filesystems.php =====
+return [
+'default' => env('FILESYSTEM_DISK','local'),'disks' => [
+'local' => [
+'driver' => 'local','root' => storage_path('app/private'),'serve' => true,'throw' => false,'report' => false,],'public' => [
+'driver' => 'local','root' => storage_path('app/public'),'url' => rtrim(env('APP_URL','http:
+'visibility' => 'public','throw' => false,'report' => false,],'s3' => [
+'driver' => 's3','key' => env('AWS_ACCESS_KEY_ID'),'secret' => env('AWS_SECRET_ACCESS_KEY'),'region' => env('AWS_DEFAULT_REGION'),'bucket' => env('AWS_BUCKET'),'url' => env('AWS_URL'),'endpoint' => env('AWS_ENDPOINT'),'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT',false),'throw' => false,'report' => false,],],'links' => [
+public_path('storage')=> storage_path('app/public'),],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\logging.php =====
+return [
+'default' => env('LOG_CHANNEL','stack'),'deprecations' => [
+'channel' => env('LOG_DEPRECATIONS_CHANNEL','null'),'trace' => env('LOG_DEPRECATIONS_TRACE',false),],'channels' => [
+'stack' => [
+'driver' => 'stack','channels' => explode(',',(string)env('LOG_STACK','single')),'ignore_exceptions' => false,],'single' => [
+'driver' => 'single','path' => storage_path('logs/laravel.log'),'level' => env('LOG_LEVEL','debug'),'replace_placeholders' => true,],'daily' => [
+'driver' => 'daily','path' => storage_path('logs/laravel.log'),'level' => env('LOG_LEVEL','debug'),'days' => env('LOG_DAILY_DAYS',14),'replace_placeholders' => true,],'slack' => [
+'driver' => 'slack','url' => env('LOG_SLACK_WEBHOOK_URL'),'username' => env('LOG_SLACK_USERNAME',env('APP_NAME','Laravel')),'emoji' => env('LOG_SLACK_EMOJI',':boom:'),'level' => env('LOG_LEVEL','critical'),'replace_placeholders' => true,],'papertrail' => [
+'driver' => 'monolog','level' => env('LOG_LEVEL','debug'),'handler' => env('LOG_PAPERTRAIL_HANDLER',SyslogUdpHandler::class),'handler_with' => [
+'host' => env('PAPERTRAIL_URL'),'port' => env('PAPERTRAIL_PORT'),'connectionString' => 'tls:
+],'processors' => [PsrLogMessageProcessor::class],],'stderr' => [
+'driver' => 'monolog','level' => env('LOG_LEVEL','debug'),'handler' => StreamHandler::class,'handler_with' => [
+'stream' => 'php:
+],'formatter' => env('LOG_STDERR_FORMATTER'),'processors' => [PsrLogMessageProcessor::class],],'syslog' => [
+'driver' => 'syslog','level' => env('LOG_LEVEL','debug'),'facility' => env('LOG_SYSLOG_FACILITY',LOG_USER),'replace_placeholders' => true,],'errorlog' => [
+'driver' => 'errorlog','level' => env('LOG_LEVEL','debug'),'replace_placeholders' => true,],'null' => [
+'driver' => 'monolog','handler' => NullHandler::class,],'emergency' => [
+'path' => storage_path('logs/laravel.log'),],],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\mail.php =====
+return [
+'default' => env('MAIL_MAILER','log'),'mailers' => [
+'smtp' => [
+'transport' => 'smtp','scheme' => env('MAIL_SCHEME'),'url' => env('MAIL_URL'),'host' => env('MAIL_HOST','127.0.0.1'),'port' => env('MAIL_PORT',2525),'username' => env('MAIL_USERNAME'),'password' => env('MAIL_PASSWORD'),'timeout' => null,'local_domain' => env('MAIL_EHLO_DOMAIN',parse_url((string)env('APP_URL','http:
+],'ses' => [
+'transport' => 'ses',],'postmark' => [
+'transport' => 'postmark',],'resend' => [
+'transport' => 'resend',],'sendmail' => [
+'transport' => 'sendmail','path' => env('MAIL_SENDMAIL_PATH','/usr/sbin/sendmail -bs -i'),],'log' => [
+'transport' => 'log','channel' => env('MAIL_LOG_CHANNEL'),],'array' => [
+'transport' => 'array',],'failover' => [
+'transport' => 'failover','mailers' => [
+'smtp','log',],'retry_after' => 60,],'roundrobin' => [
+'transport' => 'roundrobin','mailers' => [
+'ses','postmark',],'retry_after' => 60,],],'from' => [
+'address' => env('MAIL_FROM_ADDRESS','hello@example.com'),'name' => env('MAIL_FROM_NAME',env('APP_NAME','Laravel')),],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\queue.php =====
+return [
+'default' => env('QUEUE_CONNECTION','database'),'connections' => [
+'sync' => [
+'driver' => 'sync',],'database' => [
+'driver' => 'database','connection' => env('DB_QUEUE_CONNECTION'),'table' => env('DB_QUEUE_TABLE','jobs'),'queue' => env('DB_QUEUE','default'),'retry_after' =>(int)env('DB_QUEUE_RETRY_AFTER',90),'after_commit' => false,],'beanstalkd' => [
+'driver' => 'beanstalkd','host' => env('BEANSTALKD_QUEUE_HOST','localhost'),'queue' => env('BEANSTALKD_QUEUE','default'),'retry_after' =>(int)env('BEANSTALKD_QUEUE_RETRY_AFTER',90),'block_for' => 0,'after_commit' => false,],'sqs' => [
+'driver' => 'sqs','key' => env('AWS_ACCESS_KEY_ID'),'secret' => env('AWS_SECRET_ACCESS_KEY'),'prefix' => env('SQS_PREFIX','https:
+'queue' => env('SQS_QUEUE','default'),'suffix' => env('SQS_SUFFIX'),'region' => env('AWS_DEFAULT_REGION','us-east-1'),'after_commit' => false,],'redis' => [
+'driver' => 'redis','connection' => env('REDIS_QUEUE_CONNECTION','default'),'queue' => env('REDIS_QUEUE','default'),'retry_after' =>(int)env('REDIS_QUEUE_RETRY_AFTER',90),'block_for' => null,'after_commit' => false,],'deferred' => [
+'driver' => 'deferred',],'background' => [
+'driver' => 'background',],'failover' => [
+'driver' => 'failover','connections' => [
+'database','deferred',],],],'batching' => [
+'database' => env('DB_CONNECTION','sqlite'),'table' => 'job_batches',],'failed' => [
+'driver' => env('QUEUE_FAILED_DRIVER','database-uuids'),'database' => env('DB_CONNECTION','sqlite'),'table' => 'failed_jobs',],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\sanctum.php =====
+return [
+'stateful' => explode(',',env('SANCTUM_STATEFUL_DOMAINS',sprintf('%s%s','localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',Sanctum::currentApplicationUrlWithPort(),))),'guard' => ['web'],'expiration' => null,'token_prefix' => env('SANCTUM_TOKEN_PREFIX',''),'middleware' => [
+'authenticate_session' => AuthenticateSession::class,'encrypt_cookies' => EncryptCookies::class,'validate_csrf_token' => ValidateCsrfToken::class,],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\services.php =====
+return [
+'postmark' => [
+'key' => env('POSTMARK_API_KEY'),],'resend' => [
+'key' => env('RESEND_API_KEY'),],'ses' => [
+'key' => env('AWS_ACCESS_KEY_ID'),'secret' => env('AWS_SECRET_ACCESS_KEY'),'region' => env('AWS_DEFAULT_REGION','us-east-1'),],'slack' => [
+'notifications' => [
+'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),],],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\session.php =====
+return [
+'driver' => env('SESSION_DRIVER','database'),'lifetime' =>(int)env('SESSION_LIFETIME',120),'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE',false),'encrypt' => env('SESSION_ENCRYPT',false),'files' => storage_path('framework/sessions'),'connection' => env('SESSION_CONNECTION'),'table' => env('SESSION_TABLE','sessions'),'store' => env('SESSION_STORE'),'lottery' => [2,100],'cookie' => env('SESSION_COOKIE',Str::slug((string)env('APP_NAME','laravel')).'-session'),'path' => env('SESSION_PATH','/'),'domain' => env('SESSION_DOMAIN'),'secure' => env('SESSION_SECURE_COOKIE'),'http_only' => env('SESSION_HTTP_ONLY',true),'same_site' => env('SESSION_SAME_SITE','lax'),'partitioned' => env('SESSION_PARTITIONED_COOKIE',false),'serialization' => 'json',];
+
+// === [Routes] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\api.php =====
+Route::post('/register',[AuthController::class,'register']);Route::post('/login',[AuthController::class,'login'])->name('login');Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});Route::apiResource('products',ProductController::class)->except(['store','update','destroy']);Route::apiResource('categories',CategoryController::class)->except(['store','update','destroy']);Route::middleware('auth:sanctum')->group(function(){Route::apiResource('products',ProductController::class)->except(['index','show']);Route::apiResource('categories',CategoryController::class)->except(['index','show']);});
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\console.php =====
+Artisan::command('inspire',function(){$this->comment(Inspiring::quote());})->purpose('Display an inspiring quote');
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\web.php =====
+Route::get('/',function(){return view('welcome');});
+
+// === [Providers] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Providers\AppServiceProvider.php =====
+namespace App\Providers;class AppServiceProvider extends ServiceProvider{public function register(): void{}public function boot(): void{Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);}}
+
+// === [Bootstrap] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});$exceptions->render(function(NotFoundHttpException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Resource not found.',404,false);}});})->create();
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
+return array('laravel/boost' => 
+array('providers' => 
+array(0 => 'Laravel\\Boost\\BoostServiceProvider',),),'laravel/mcp' => 
+array('aliases' => 
+array('Mcp' => 'Laravel\\Mcp\\Server\\Facades\\Mcp',),'providers' => 
+array(0 => 'Laravel\\Mcp\\Server\\McpServiceProvider',),),'laravel/pail' => 
+array('providers' => 
+array(0 => 'Laravel\\Pail\\PailServiceProvider',),),'laravel/pao' => 
+array('providers' => 
+array(0 => 'Laravel\\Pao\\Laravel\\ServiceProvider',),),'laravel/roster' => 
+array('providers' => 
+array(0 => 'Laravel\\Roster\\RosterServiceProvider',),),'laravel/sanctum' => 
+array('providers' => 
+array(0 => 'Laravel\\Sanctum\\SanctumServiceProvider',),),'laravel/tinker' => 
+array('providers' => 
+array(0 => 'Laravel\\Tinker\\TinkerServiceProvider',),),'nesbot/carbon' => 
+array('providers' => 
+array(0 => 'Carbon\\Laravel\\ServiceProvider',),),'nunomaduro/collision' => 
+array('providers' => 
+array(0 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',),),'nunomaduro/termwind' => 
+array('providers' => 
+array(0 => 'Termwind\\Laravel\\TermwindServiceProvider',),),);
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\providers.php =====
+return [
+AppServiceProvider::class,];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\services.php =====
+return array('providers' => 
+array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Broadcasting\\BroadcastServiceProvider',2 => 'Illuminate\\Bus\\BusServiceProvider',3 => 'Illuminate\\Cache\\CacheServiceProvider',4 => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider',5 => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider',6 => 'Illuminate\\Cookie\\CookieServiceProvider',7 => 'Illuminate\\Database\\DatabaseServiceProvider',8 => 'Illuminate\\Encryption\\EncryptionServiceProvider',9 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',10 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',11 => 'Illuminate\\Hashing\\HashServiceProvider',12 => 'Illuminate\\Mail\\MailServiceProvider',13 => 'Illuminate\\Notifications\\NotificationServiceProvider',14 => 'Illuminate\\Pagination\\PaginationServiceProvider',15 => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider',16 => 'Illuminate\\Pipeline\\PipelineServiceProvider',17 => 'Illuminate\\Queue\\QueueServiceProvider',18 => 'Illuminate\\Redis\\RedisServiceProvider',19 => 'Illuminate\\Session\\SessionServiceProvider',20 => 'Illuminate\\Translation\\TranslationServiceProvider',21 => 'Illuminate\\Validation\\ValidationServiceProvider',22 => 'Illuminate\\View\\ViewServiceProvider',23 => 'Laravel\\Boost\\BoostServiceProvider',24 => 'Laravel\\Mcp\\Server\\McpServiceProvider',25 => 'Laravel\\Pail\\PailServiceProvider',26 => 'Laravel\\Pao\\Laravel\\ServiceProvider',27 => 'Laravel\\Roster\\RosterServiceProvider',28 => 'Laravel\\Sanctum\\SanctumServiceProvider',29 => 'Laravel\\Tinker\\TinkerServiceProvider',30 => 'Carbon\\Laravel\\ServiceProvider',31 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',32 => 'Termwind\\Laravel\\TermwindServiceProvider',33 => 'App\\Providers\\AppServiceProvider',),'eager' => 
+array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Cookie\\CookieServiceProvider',2 => 'Illuminate\\Database\\DatabaseServiceProvider',3 => 'Illuminate\\Encryption\\EncryptionServiceProvider',4 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',5 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',6 => 'Illuminate\\Notifications\\NotificationServiceProvider',7 => 'Illuminate\\Pagination\\PaginationServiceProvider',8 => 'Illuminate\\Session\\SessionServiceProvider',9 => 'Illuminate\\View\\ViewServiceProvider',10 => 'Laravel\\Boost\\BoostServiceProvider',11 => 'Laravel\\Mcp\\Server\\McpServiceProvider',12 => 'Laravel\\Pail\\PailServiceProvider',13 => 'Laravel\\Pao\\Laravel\\ServiceProvider',14 => 'Laravel\\Roster\\RosterServiceProvider',15 => 'Laravel\\Sanctum\\SanctumServiceProvider',16 => 'Carbon\\Laravel\\ServiceProvider',17 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',18 => 'Termwind\\Laravel\\TermwindServiceProvider',19 => 'App\\Providers\\AppServiceProvider',),'deferred' => 
+array('Illuminate\\Broadcasting\\BroadcastManager' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Factory' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Broadcaster' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\QueueingDispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\BatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\DatabaseBatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','cache' => 'Illuminate\\Cache\\CacheServiceProvider','cache.store' => 'Illuminate\\Cache\\CacheServiceProvider','cache.psr6' => 'Illuminate\\Cache\\CacheServiceProvider','memcached.connector' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Cache\\RateLimiter' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Foundation\\Console\\AboutCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ForgetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClearCompiledCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Auth\\Console\\ClearResetsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DbCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\PruneCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\WipeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DownCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentDecryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentEncryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\Console\\InvokeSerializedClosureCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\KeyGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PackageDiscoverCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\PruneStaleTagsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FlushFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ForgetFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListenCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneBatchesCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneFailedJobsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RestartCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryBatchCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\WorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ReloadCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DumpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleFinishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleRunCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleClearCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleTestCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleWorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleInterruptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\SchedulePauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowModelCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageLinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageUnlinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\UpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ApiInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\BroadcastingInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\CacheTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\CastMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClassMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ComponentMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConsoleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\ControllerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DocsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnumMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ExceptionMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Factories\\FactoryMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\InterfaceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\LangPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ListenerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\MailMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\MiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ModelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\NotificationMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Notifications\\Console\\NotificationTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ObserverMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PolicyMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ProviderMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FailedTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\BatchesTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RequestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ResourceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RuleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ScopeMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeederMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Session\\Console\\SessionTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ServeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StubPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TraitMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\VendorPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.repository' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.creator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Migrations\\Migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\FreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\InstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RefreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\ResetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RollbackCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\StatusCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','composer' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\ConcurrencyManager' => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider','hash' => 'Illuminate\\Hashing\\HashServiceProvider','hash.driver' => 'Illuminate\\Hashing\\HashServiceProvider','mail.manager' => 'Illuminate\\Mail\\MailServiceProvider','mailer' => 'Illuminate\\Mail\\MailServiceProvider','Illuminate\\Mail\\Markdown' => 'Illuminate\\Mail\\MailServiceProvider','auth.password' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','auth.password.broker' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','Illuminate\\Contracts\\Pipeline\\Hub' => 'Illuminate\\Pipeline\\PipelineServiceProvider','pipeline' => 'Illuminate\\Pipeline\\PipelineServiceProvider','queue' => 'Illuminate\\Queue\\QueueServiceProvider','queue.connection' => 'Illuminate\\Queue\\QueueServiceProvider','queue.failer' => 'Illuminate\\Queue\\QueueServiceProvider','queue.listener' => 'Illuminate\\Queue\\QueueServiceProvider','queue.routes' => 'Illuminate\\Queue\\QueueServiceProvider','queue.worker' => 'Illuminate\\Queue\\QueueServiceProvider','redis' => 'Illuminate\\Redis\\RedisServiceProvider','redis.connection' => 'Illuminate\\Redis\\RedisServiceProvider','translator' => 'Illuminate\\Translation\\TranslationServiceProvider','translation.loader' => 'Illuminate\\Translation\\TranslationServiceProvider','validator' => 'Illuminate\\Validation\\ValidationServiceProvider','validation.presence' => 'Illuminate\\Validation\\ValidationServiceProvider','Illuminate\\Contracts\\Validation\\UncompromisedVerifier' => 'Illuminate\\Validation\\ValidationServiceProvider','command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',),'when' => 
+array('Illuminate\\Broadcasting\\BroadcastServiceProvider' => 
+array(),'Illuminate\\Bus\\BusServiceProvider' => 
+array(),'Illuminate\\Cache\\CacheServiceProvider' => 
+array(),'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider' => 
+array(),'Illuminate\\Concurrency\\ConcurrencyServiceProvider' => 
+array(),'Illuminate\\Hashing\\HashServiceProvider' => 
+array(),'Illuminate\\Mail\\MailServiceProvider' => 
+array(),'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider' => 
+array(),'Illuminate\\Pipeline\\PipelineServiceProvider' => 
+array(),'Illuminate\\Queue\\QueueServiceProvider' => 
+array(),'Illuminate\\Redis\\RedisServiceProvider' => 
+array(),'Illuminate\\Translation\\TranslationServiceProvider' => 
+array(),'Illuminate\\Validation\\ValidationServiceProvider' => 
+array(),'Laravel\\Tinker\\TinkerServiceProvider' => 
+array(),),);
