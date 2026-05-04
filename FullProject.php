@@ -3,20 +3,18 @@
 // === [Controllers] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\AuthController.php =====
 namespace App\Http\Controllers\Api;class AuthController extends Controller{public function register(RegisterRequest $request): JsonResponse{$user = User::create([
-'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return response()->json([
-'user' => $user,'token' => $token,]);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return response()->json(['message' => 'Invalid credentials'],401);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return response()->json([
-'user' => $user,'token' => $token,]);}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return response()->json([
-'message' => 'Logged out',]);}public function me(Request $request): JsonResponse{return response()->json($request->user());}}
+'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'User registered successfully',201);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return ResponseHelper::jsonResponse(null,'Invalid credentials',401,false);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'Login successful');}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return ResponseHelper::jsonResponse(null,'Logged out successfully');}public function me(Request $request): JsonResponse{return ResponseHelper::jsonResponse($request->user(),'User profile retrieved');}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Controller.php =====
 namespace App\Http\Controllers;abstract class Controller{}
 
 // === [ApiControllers] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\AuthController.php =====
 namespace App\Http\Controllers\Api;class AuthController extends Controller{public function register(RegisterRequest $request): JsonResponse{$user = User::create([
-'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return response()->json([
-'user' => $user,'token' => $token,]);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return response()->json(['message' => 'Invalid credentials'],401);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return response()->json([
-'user' => $user,'token' => $token,]);}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return response()->json([
-'message' => 'Logged out',]);}public function me(Request $request): JsonResponse{return response()->json($request->user());}}
+'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'User registered successfully',201);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return ResponseHelper::jsonResponse(null,'Invalid credentials',401,false);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
+'user' => $user,'token' => $token,],'Login successful');}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return ResponseHelper::jsonResponse(null,'Logged out successfully');}public function me(Request $request): JsonResponse{return ResponseHelper::jsonResponse($request->user(),'User profile retrieved');}}
 
 // === [Models] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Cart.php =====
@@ -139,7 +137,7 @@ namespace Database\Factories;class WalletFactory extends Factory{public function
 // === [Requests] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
 namespace App\Http\Requests;class LoginRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'email' => ['required','email'],'password' => ['required','string'],];}}
+'email' => ['required','email'],'password' => ['required','string','min:6'],];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\RegisterRequest.php =====
 namespace App\Http\Requests;class RegisterRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
 'name' => ['required','string','max:255'],'email' => ['required','email','unique:users,email'],'password' => ['required','min:6','confirmed'],];}}
@@ -283,8 +281,7 @@ namespace App\Providers;class AppServiceProvider extends ServiceProvider{public 
 
 // === [Bootstrap] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
-return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return response()->json([
-'message' => 'Unauthenticated.',],401);}});})->create();
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});})->create();
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
 return array('laravel/boost' => 
 array('providers' => 
