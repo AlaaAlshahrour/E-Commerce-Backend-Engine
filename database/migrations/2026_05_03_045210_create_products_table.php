@@ -16,8 +16,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('description');
-            $table->decimal('price', 10, 2);
-            $table->string('photo_url')->nullable();
+            $table->decimal('price');
+            $table->string('photo_url');
             $table->foreignIdFor(Category::class)->constrained();
             $table->timestamps();
         });
