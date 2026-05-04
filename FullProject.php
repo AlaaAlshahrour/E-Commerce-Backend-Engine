@@ -75,64 +75,66 @@ return new class extends Migration{public function up(): void{Schema::create('pe
 
 // === [Seeders] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartItemSeeder.php =====
-namespace Database\Seeders;class CartItemSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class CartItemSeeder extends Seeder{public function run(): void{CartItem::factory(10)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartSeeder.php =====
-namespace Database\Seeders;class CartSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class CartSeeder extends Seeder{public function run(): void{Cart::factory(5)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CategorySeeder.php =====
-namespace Database\Seeders;class CategorySeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class CategorySeeder extends Seeder{public function run(): void{Category::factory(5)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\DatabaseSeeder.php =====
-namespace Database\Seeders;class DatabaseSeeder extends Seeder{use WithoutModelEvents;public function run(): void{User::factory()->create([
-'name' => 'Test User','email' => 'test@example.com',]);}}
+namespace Database\Seeders;class DatabaseSeeder extends Seeder{use WithoutModelEvents;public function run(): void{$this->call([
+UserSeeder::class,CategorySeeder::class,ProductSeeder::class,InventorySeeder::class,WalletSeeder::class,CartSeeder::class,CartItemSeeder::class,OrderSeeder::class,OrderItemSeeder::class,TransactionSeeder::class,PaymentSeeder::class,]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\InventorySeeder.php =====
-namespace Database\Seeders;class InventorySeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class InventorySeeder extends Seeder{public function run(): void{Inventory::factory(10)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\OrderItemSeeder.php =====
-namespace Database\Seeders;class OrderItemSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class OrderItemSeeder extends Seeder{public function run(): void{OrderItem::factory(20)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\OrderSeeder.php =====
-namespace Database\Seeders;class OrderSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class OrderSeeder extends Seeder{public function run(): void{Order::factory(10)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\PaymentSeeder.php =====
-namespace Database\Seeders;class PaymentSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class PaymentSeeder extends Seeder{public function run(): void{Payment::factory(10)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\ProductSeeder.php =====
-namespace Database\Seeders;class ProductSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class ProductSeeder extends Seeder{public function run(): void{Product::factory(20)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\TransactionSeeder.php =====
-namespace Database\Seeders;class TransactionSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class TransactionSeeder extends Seeder{public function run(): void{Transaction::factory(20)->create();}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\UserSeeder.php =====
+namespace Database\Seeders;class UserSeeder extends Seeder{public function run(): void{User::factory(10)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\WalletSeeder.php =====
-namespace Database\Seeders;class WalletSeeder extends Seeder{public function run(): void{}}
+namespace Database\Seeders;class WalletSeeder extends Seeder{public function run(): void{Wallet::factory(10)->create();}}
 
 // === [Factories] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartFactory.php =====
 namespace Database\Factories;class CartFactory extends Factory{public function definition(): array{return [
-];}}
+'user_id' => User::factory(),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartItemFactory.php =====
 namespace Database\Factories;class CartItemFactory extends Factory{public function definition(): array{return [
-];}}
+'product_id' => Product::factory(),'cart_id' => Cart::factory(),'quantity' => fake()->numberBetween(1,5),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CategoryFactory.php =====
 namespace Database\Factories;class CategoryFactory extends Factory{public function definition(): array{return [
-];}}
+'name' => fake()->words(2,true),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\InventoryFactory.php =====
 namespace Database\Factories;class InventoryFactory extends Factory{public function definition(): array{return [
-];}}
+'product_id' => Product::factory(),'quantity' => fake()->numberBetween(0,100),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\OrderFactory.php =====
 namespace Database\Factories;class OrderFactory extends Factory{public function definition(): array{return [
-];}}
+'user_id' => User::factory(),'status' => fake()->randomElement(['Processing','Canceled','Completed','pending']),'total_amount' => fake()->randomFloat(2,50,2000),'shipping_address' => fake()->address(),'payment_method' => fake()->randomElement(['wallet','card','cash']),'payment_status' => fake()->randomElement(['pending','paid','failed','refunded']),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\OrderItemFactory.php =====
 namespace Database\Factories;class OrderItemFactory extends Factory{public function definition(): array{return [
-];}}
+'product_id' => Product::factory(),'order_id' => Order::factory(),'quantity' => fake()->numberBetween(1,5),'unit_price' => fake()->randomFloat(2,10,500),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\PaymentFactory.php =====
 namespace Database\Factories;class PaymentFactory extends Factory{public function definition(): array{return [
-];}}
+'order_id' => Order::factory(),'type' => fake()->randomElement(['payment','refund']),'amount' => fake()->randomFloat(2,10,2000),'status' => fake()->randomElement(['pending','completed','failed']),'transaction_id' => Transaction::factory(),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\ProductFactory.php =====
 namespace Database\Factories;class ProductFactory extends Factory{public function definition(): array{return [
-];}}
+'name' => fake()->words(3,true),'description' => fake()->paragraph(),'price' => fake()->randomFloat(2,10,1000),'photo_url' => fake()->imageUrl(),'category_id' => Category::factory(),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\TransactionFactory.php =====
-namespace Database\Factories;class TransactionFactory extends Factory{public function definition(): array{return [
-];}}
+namespace Database\Factories;class TransactionFactory extends Factory{public function definition(): array{$amount = fake()->randomFloat(2,10,1000);$balanceBefore = fake()->randomFloat(2,1000,5000);return [
+'wallet_id' => Wallet::factory(),'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore + $amount,'type' => fake()->randomElement(['deposit','withdraw','payment','refund']),'status' => fake()->randomElement(['pending','completed','failed']),'reference_type' => fake()->randomElement(['order','topup','refund']),'reference_id' => fake()->numberBetween(1,1000),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\UserFactory.php =====
 namespace Database\Factories;class UserFactory extends Factory{protected static ?string $password;public function definition(): array{return [
 'name' => fake()->name(),'email' => fake()->unique()->safeEmail(),'email_verified_at' => now(),'password' => static::$password ??= Hash::make('password'),'remember_token' => Str::random(10),];}public function unverified(): static{return $this->state(fn(array $attributes)=> [
 'email_verified_at' => null,]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\WalletFactory.php =====
 namespace Database\Factories;class WalletFactory extends Factory{public function definition(): array{return [
-];}}
+'user_id' => User::factory(),'balance' => fake()->randomFloat(2,0,10000),'is_active' => true,];}}
 
 // === [Requests] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
@@ -269,7 +271,7 @@ return [
 
 // === [Routes] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\api.php =====
-Route::post('/register',[AuthController::class,'register']);Route::post('/login',[AuthController::class,'login']);Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});
+Route::post('/register',[AuthController::class,'register']);Route::post('/login',[AuthController::class,'login'])->name('login');Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\console.php =====
 Artisan::command('inspire',function(){$this->comment(Inspiring::quote());})->purpose('Display an inspiring quote');
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\web.php =====
@@ -281,7 +283,7 @@ namespace App\Providers;class AppServiceProvider extends ServiceProvider{public 
 
 // === [Bootstrap] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
-return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')|| $request->expectsJson()){return response()->json([
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return response()->json([
 'message' => 'Unauthenticated.',],401);}});})->create();
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
 return array('laravel/boost' => 
