@@ -6,7 +6,6 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class CartRepository
 {
@@ -15,56 +14,40 @@ class CartRepository
         return Cart::create(['user_id' => $userId]);
     }
 
-    public function getStoreProduct(int $storeId, int $productId)
+    public function getProduct(int $productId)
     {
-        return DB::table('store_products')
-            ->where('store_id', $storeId)
-            ->where('product_id', $productId)
+        return DB::table('products')
+            ->where('id', $productId)
             ->first();
     }
 
-
-    public function addProductToCart(Cart $cart, int $storeProductId, int $quantity): void
+    public function addProductToCart(Cart $cart, int $productId, int $quantity): void
     {
-        $cart->increment('cart_count');
         DB::table('cart_items')->insert([
-            'cart_id' => $cart->id,
-            'store_product_id' => $storeProductId,
-            'amount_needed' => $quantity,
+            'cart_id'    => $cart->id,
+            'product_id' => $productId,
+            'quantity'   => $quantity,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
     }
 
-    public function getCartProducts(Cart $cart, $onlyUnavailable = false)
+    public function getCartProducts(Cart $cart)
     {
         $total_price = 0;
 
-        $query = CartItem::query()
-            ->where('cart_id', $cart->id);
-
-        if ($onlyUnavailable) {
-            $query->whereHas('storeProduct', function ($query) {
-                $query->whereColumn('quantity', '>=', 'amount_needed');
-            });
-        }
-
-        $mappedProducts = $query
+        $mappedProducts = CartItem::query()
+            ->where('cart_id', $cart->id)
             ->with([
-                'storeProduct:id,store_id,product_id,price,quantity,sold_quantity,description,main_image',
-                'storeProduct.store:id,name',
-                'storeProduct.product:id,category_id,name',
-                'storeProduct.product.favoritedByUsers' => function ($query) {
-                    $query->where('user_id', auth()->id());
-                },
-                'storeProduct.product.category:id,name',
+                'product:id,category_id,name,description,price,photo_url',
+                'product.category:id,name',
+                'product.inventory:id,product_id,quantity',
             ])
             ->get()
-            ->map(function ($cartProduct) use (&$total_price) {
-                $storeProduct = $cartProduct->storeProduct;
-                $isFavorite = $storeProduct->product->favoritedByUsers->isNotEmpty() ? 1 : 0;
-                $order_amount = $cartProduct->amount_needed;
-                $availableStock = $storeProduct->quantity;
+            ->map(function ($cartItem) use (&$total_price) {
+                $product        = $cartItem->product;
+                $order_amount   = $cartItem->quantity;
+                $availableStock = optional($product->inventory)->quantity ?? 0;
 
                 $message = $availableStock == 0
                     ? 'No stock available'
@@ -73,26 +56,20 @@ class CartRepository
                         : 'Available now');
 
                 if ($availableStock >= $order_amount) {
-                    $total_price += $order_amount * $storeProduct->price;
+                    $total_price += $order_amount * $product->price;
                 }
 
-                $mainUrl = Storage::url($storeProduct->main_image);
-
                 return [
-                    'store_id'         => $storeProduct->store->id,
-                    'store_name'       => $storeProduct->store->name,
-                    'order_quantity'   => $cartProduct->amount_needed,
-                    'store_product_id' => $storeProduct->id,
-                    'price'            => $storeProduct->price,
-                    'quantity'         => $storeProduct->quantity,
-                    'description'      => $storeProduct->description,
-                    'product_id'       => $storeProduct->product->id,
-                    'product_name'     => $storeProduct->product->name,
-                    'category_id'      => $storeProduct->product->category_id,
-                    'category_name'    => $storeProduct->product->category->name,
-                    'main_image'       => asset($mainUrl),
-                    'is_favorite'      => $isFavorite,
-                    'message'          => $message,
+                    'product_id'     => $product->id,
+                    'product_name'   => $product->name,
+                    'description'    => $product->description,
+                    'price'          => $product->price,
+                    'photo_url'      => $product->photo_url,
+                    'category_id'    => $product->category_id,
+                    'category_name'  => $product->category->name,
+                    'order_quantity' => $order_amount,
+                    'stock'          => $availableStock,
+                    'message'        => $message,
                 ];
             });
 
@@ -102,13 +79,10 @@ class CartRepository
         ];
     }
 
-    public function deleteAll(User $user)
+    public function deleteAll(User $user): void
     {
         DB::transaction(function () use ($user) {
-            $cart = $user->cart;
-            $cart->cartProducts()->delete();
-            $cart->cart_count = 0;
-            $cart->save();
+            $user->cart->cartItems()->delete();
         });
     }
 }

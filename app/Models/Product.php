@@ -18,8 +18,8 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function inventories()
+    public function inventory()
     {
-        return $this->hasMany(Inventory::class);
+        return $this->hasOne(Inventory::class);
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Cart;
 use App\Models\User;
 use App\Repositories\CartRepository;
 use Illuminate\Support\Facades\Auth;
@@ -11,46 +10,57 @@ class CartService
 {
     protected $cartRepository;
 
-
     public function __construct(CartRepository $cartRepository)
     {
         $this->cartRepository = $cartRepository;
     }
 
-    public function addProductToCart(int $store_id, int $product_id, int $quantity): array
+    public function addProductToCart(int $product_id, int $quantity): array
     {
         $user = Auth::user();
-
         $cart = $user->cart ?? $this->cartRepository->createCart($user->id);
 
-        $storeProduct = $this->cartRepository->getStoreProduct($store_id, $product_id);
+        $product = $this->cartRepository->getProduct($product_id);
 
-        if ($storeProduct->quantity < $quantity) {
-            return ['success' => false, 'message' => __('messages.not_enough_stock')];
+        if (!$product) {
+            return ['success' => false, 'message' => 'Product not found'];
         }
 
-        $this->cartRepository->addProductToCart($cart, $storeProduct->id, $quantity);
+        $availableStock = $product->inventory->quantity ?? 0;
 
-        return ['success' => true, 'message' => __('messages.product_added_to_cart')];
+        if ($availableStock < $quantity) {
+            return ['success' => false, 'message' => 'Not enough stock'];
+        }
+
+        // منع إضافة نفس المنتج مرتين
+        $alreadyInCart = $cart->cartItems()->where('product_id', $product_id)->exists();
+        if ($alreadyInCart) {
+            return ['success' => false, 'message' => 'Product already in cart'];
+        }
+
+        $this->cartRepository->addProductToCart($cart, $product_id, $quantity);
+
+        return ['success' => true, 'message' => 'Product added to cart'];
     }
+
     public function getAllProductsInCart(User $user): array
     {
         $cart = $user->cart;
 
-        if (! $cart) {
-            return ['message' => __('messages.cart_empty')];
+        if (!$cart) {
+            return ['message' => 'Cart is empty'];
         }
 
         $cartData = $this->cartRepository->getCartProducts($cart);
 
-        if (empty($cartData['products'])) {
-            return ['message' => __('messages.cart_empty')];
+        if ($cartData['products']->isEmpty()) {
+            return ['message' => 'Cart is empty'];
         }
 
         return $cartData;
     }
 
-    public function deleteAll()
+    public function deleteAll(): void
     {
         $user = Auth::user();
         $this->cartRepository->deleteAll($user);

@@ -17,37 +17,39 @@ class CartController extends Controller
         $this->cartService = $cartService;
     }
 
-
-    public function add(int $store_id, int $product_id, Request $request)
+    public function add(int $product_id, Request $request)
     {
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
 
-        $result = $this->cartService->addProductToCart($store_id, $product_id, $request->input('quantity'));
+        $result = $this->cartService->addProductToCart($product_id, $request->input('quantity'));
 
-        if (! $result['success']) {
-            return ResponseHelper::jsonResponse('', $result['message']);
+        if (!$result['success']) {
+            return ResponseHelper::jsonResponse('', $result['message'], 422);
         }
 
-        return ResponseHelper::jsonResponse('', $result['message']);
+        return ResponseHelper::jsonResponse('', $result['message'], 200);
     }
 
     public function getCartProducts()
     {
         $user = Auth::user();
-
         $result = $this->cartService->getAllProductsInCart($user);
 
         if (isset($result['message'])) {
             return ResponseHelper::jsonResponse($result['message']);
-        } else {
-            return response()->json(['data' => $result['products'], 'total_price' => (float) $result['total_price']]);
         }
+
+        return response()->json([
+            'data'        => $result['products'],
+            'total_price' => (float) $result['total_price'],
+        ]);
     }
 
     public function deleteAll()
     {
         $this->cartService->deleteAll();
-
-        return ResponseHelper::jsonResponse(__('messages.cart_products_deleted'));
+        return ResponseHelper::jsonResponse('Cart cleared successfully');
     }
-
 }
