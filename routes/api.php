@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
@@ -30,4 +31,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('categories', CategoryController::class)
         ->except(['index', 'show']);
+});
+
+////////   cart   //////////////////
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('carts/{store}/products/{product}/add', [CartController::class, 'add']);
+    Route::get('carts/products', [CartController::class, 'getCartProducts']);
+    Route::delete('carts/delete-all', [CartController::class, 'deleteAll']);
 });
