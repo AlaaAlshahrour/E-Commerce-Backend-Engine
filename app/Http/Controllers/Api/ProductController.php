@@ -6,6 +6,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\Inventory;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -55,7 +56,10 @@ class ProductController extends Controller
         unset($data['image']);
 
         $product = Product::create($data);
-
+        Inventory::create([
+            'product_id' => $product->id,
+            'quantity'   => 0,
+        ]);
         return ResponseHelper::jsonResponse($product, 'Product created successfully', 201);
     }
 
