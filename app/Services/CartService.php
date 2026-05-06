@@ -22,17 +22,23 @@ class CartService
 
         $product = $this->cartRepository->getProduct($product_id);
 
+        \Log::info('inventory: ' . json_encode($product->inventory));
+        \Log::info('quantity: ' . $product->inventory?->quantity);
+        \Log::info('requested: ' . $quantity);
         if (!$product) {
             return ['success' => false, 'message' => 'Product not found'];
         }
 
-        $availableStock = $product->inventory->quantity ?? 0;
+        $availableStock = $product->inventory?->quantity ?? 0;
 
-        if ($availableStock < $quantity) {
-            return ['success' => false, 'message' => 'Not enough stock'];
+        if ($availableStock === 0) {
+            return ['success' => false, 'message' => 'No stock available'];
         }
 
-        // منع إضافة نفس المنتج مرتين
+        if ($availableStock < $quantity) {
+            return ['success' => false, 'message' => "Only {$availableStock} available"];
+        }
+
         $alreadyInCart = $cart->cartItems()->where('product_id', $product_id)->exists();
         if ($alreadyInCart) {
             return ['success' => false, 'message' => 'Product already in cart'];

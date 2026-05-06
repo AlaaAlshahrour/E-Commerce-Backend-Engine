@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -14,11 +15,10 @@ class CartRepository
         return Cart::create(['user_id' => $userId]);
     }
 
+// ✅ الكود الصحيح
     public function getProduct(int $productId)
     {
-        return DB::table('products')
-            ->where('id', $productId)
-            ->first();
+        return Product::with('inventory')->find($productId);
     }
 
     public function addProductToCart(Cart $cart, int $productId, int $quantity): void
