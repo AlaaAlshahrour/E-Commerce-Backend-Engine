@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
     Route::post('/add/{product_id}',  [CartController::class, 'add']);
     Route::get('/',                   [CartController::class, 'getCartProducts']);
     Route::delete('/clear',           [CartController::class, 'deleteAll']);
+    Route::delete('/remove',         [CartController::class, 'deleteProducts']);
 });
 
 ////////   inventory   //////////////////

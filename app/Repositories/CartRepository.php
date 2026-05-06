@@ -15,7 +15,7 @@ class CartRepository
         return Cart::create(['user_id' => $userId]);
     }
 
-// ✅ الكود الصحيح
+
     public function getProduct(int $productId)
     {
         return Product::with('inventory')->find($productId);
@@ -84,5 +84,9 @@ class CartRepository
         DB::transaction(function () use ($user) {
             $user->cart->cartItems()->delete();
         });
+    }
+    public function deleteProducts(Cart $cart, array $productIds): void
+    {
+        $cart->cartItems()->whereIn('product_id', $productIds)->delete();
     }
 }

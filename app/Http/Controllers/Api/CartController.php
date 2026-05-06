@@ -52,4 +52,23 @@ class CartController extends Controller
         $this->cartService->deleteAll();
         return ResponseHelper::jsonResponse('Cart cleared successfully');
     }
+    public function deleteProducts(Request $request)
+    {
+        $request->validate([
+            'product_ids'   => 'required|array|min:1',
+            'product_ids.*' => 'integer',
+        ]);
+
+        $result = $this->cartService->deleteProducts($request->input('product_ids'));
+
+        if (!$result['success']) {
+            return response()->json(['message' => $result['message']], 422);
+        }
+
+        return response()->json([
+            'message'       => $result['message'],
+            'deleted_ids'   => $result['deleted_ids'],
+            'not_found_ids' => $result['not_found_ids'],
+        ]);
+    }
 }

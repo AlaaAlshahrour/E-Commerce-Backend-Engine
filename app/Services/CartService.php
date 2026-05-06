@@ -71,4 +71,31 @@ class CartService
         $user = Auth::user();
         $this->cartRepository->deleteAll($user);
     }
+    public function deleteProducts(array $productIds): array
+    {
+        $user = Auth::user();
+        $cart = $user->cart;
+
+        if (!$cart) {
+            return ['success' => false, 'message' => 'Cart is empty'];
+        }
+
+        $existingIds = $cart->cartItems()
+            ->whereIn('product_id', $productIds)
+            ->pluck('product_id')
+            ->toArray();
+
+        $notFoundIds = array_values(array_diff($productIds, $existingIds));
+
+        if (!empty($existingIds)) {
+            $this->cartRepository->deleteProducts($cart, $existingIds);
+        }
+
+        return [
+            'success'       => true,
+            'message'       => 'Operation completed',
+            'deleted_ids'   => $existingIds,
+            'not_found_ids' => $notFoundIds,
+        ];
+    }
 }
