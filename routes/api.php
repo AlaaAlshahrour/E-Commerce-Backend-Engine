@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,4 +40,11 @@ Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
     Route::post('/add/{product_id}',  [CartController::class, 'add']);
     Route::get('/',                   [CartController::class, 'getCartProducts']);
     Route::delete('/clear',           [CartController::class, 'deleteAll']);
+});
+
+////////   inventory   //////////////////
+Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
+    Route::get('/',                [InventoryController::class, 'index']);
+    Route::get('/{productId}',     [InventoryController::class, 'show']);
+    Route::put('/{productId}',     [InventoryController::class, 'update']);
 });
