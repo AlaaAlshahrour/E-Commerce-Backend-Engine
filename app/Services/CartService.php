@@ -71,6 +71,7 @@ class CartService
         $user = Auth::user();
         $this->cartRepository->deleteAll($user);
     }
+
     public function deleteProducts(array $productIds): array
     {
         $user = Auth::user();
@@ -92,10 +93,44 @@ class CartService
         }
 
         return [
-            'success'       => true,
-            'message'       => 'Operation completed',
-            'deleted_ids'   => $existingIds,
+            'success' => true,
+            'message' => 'Operation completed',
+            'deleted_ids' => $existingIds,
             'not_found_ids' => $notFoundIds,
         ];
+    }
+
+    public function updateProductQuantity(int $productId, int $quantity): array
+    {
+        $user = Auth::user();
+        $cart = $user->cart;
+
+        if (!$cart) {
+            return ['success' => false, 'message' => 'Cart is empty'];
+        }
+
+        $cartItem = $cart->cartItems()->where('product_id', $productId)->first();
+
+        if (!$cartItem) {
+            return ['success' => false, 'message' => 'Product not found in cart'];
+        }
+
+        $product = $this->cartRepository->getProduct($productId);
+        $availableStock = $product->inventory?->quantity ?? 0;
+
+        if ($availableStock === 0) {
+            return ['success' => false, 'message' => 'No stock available'];
+        }
+
+        if ($quantity > $availableStock) {
+            return [
+                'success' => false,
+                'message' => "Only {$availableStock} available",
+            ];
+        }
+
+        $this->cartRepository->updateProductQuantity($cart, $productId, $quantity);
+
+        return ['success' => true, 'message' => 'Quantity updated successfully'];
     }
 }

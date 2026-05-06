@@ -89,4 +89,10 @@ class CartRepository
     {
         $cart->cartItems()->whereIn('product_id', $productIds)->delete();
     }
+    public function updateProductQuantity(Cart $cart, int $productId, int $quantity): bool
+    {
+        return $cart->cartItems()
+            ->where('product_id', $productId)
+            ->update(['quantity' => $quantity]);
+    }
 }

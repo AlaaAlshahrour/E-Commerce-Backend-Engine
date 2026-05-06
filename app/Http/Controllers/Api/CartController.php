@@ -71,4 +71,21 @@ class CartController extends Controller
             'not_found_ids' => $result['not_found_ids'],
         ]);
     }
+    public function update(int $productId, Request $request)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $result = $this->cartService->updateProductQuantity(
+            $productId,
+            $request->input('quantity')
+        );
+
+        if (!$result['success']) {
+            return response()->json(['message' => $result['message']], 422);
+        }
+
+        return ResponseHelper::jsonResponse($result['message']);
+    }
 }

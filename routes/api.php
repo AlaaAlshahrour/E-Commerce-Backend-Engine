@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
     Route::get('/',                   [CartController::class, 'getCartProducts']);
     Route::delete('/clear',           [CartController::class, 'deleteAll']);
     Route::delete('/remove',         [CartController::class, 'deleteProducts']);
+    Route::patch('/update/{product_id}',     [CartController::class, 'update']);
 });
 
 ////////   inventory   //////////////////
