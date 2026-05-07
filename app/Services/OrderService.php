@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Transaction;
 use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class OrderService
 {
@@ -95,6 +98,83 @@ class OrderService
         $updated = $this->orderRepository->updateStatus($order, $status);
 
         return ['success' => true, 'message' => 'Status updated successfully', 'data' => $updated];
+    }
+
+    public function checkout(array $data): array
+    {
+        // Create order
+        $createOrderResult = $this->createOrder($data);
+
+        if (!$createOrderResult['success']) {
+            return $createOrderResult;
+        }
+
+        $order = $createOrderResult['data'];
+        $user = Auth::user();
+        $wallet = $user->wallet;
+
+        // Check if wallet exists and is active
+        if (!$wallet || !$wallet->is_active) {
+            return ['success' => false, 'message' => 'Wallet not found or inactive'];
+        }
+
+        // Check if wallet has sufficient balance
+        if ($wallet->balance < $order->total_amount) {
+            return [
+                'success' => false,
+                'message' => 'Insufficient wallet balance',
+                'data' => [
+                    'required' => $order->total_amount,
+                    'available' => $wallet->balance,
+                    'shortage' => $order->total_amount - $wallet->balance,
+                ],
+            ];
+        }
+
+        // Process payment via transaction
+        try {
+            $transaction = DB::transaction(function () use ($order, $wallet, $user) {
+                $balanceBefore = $wallet->balance;
+                $amount = $order->total_amount;
+
+                // Deduct from wallet
+                $wallet->decrement('balance', $amount);
+
+                // Create transaction record
+                $transaction = Transaction::create([
+                    'wallet_id' => $wallet->id,
+                    'order_id' => $order->id,
+                    'amount' => $amount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceBefore - $amount,
+                    'type' => 'payment',
+                    'status' => 'completed',
+                ]);
+
+                // Update order payment status
+                Order::find($order->id)->update(['payment_status' => 'paid']);
+
+                return $transaction;
+            });
+
+            // Reload order with updated payment status
+            $updatedOrder = $this->getOrderById($order->id);
+
+            return [
+                'success' => true,
+                'message' => 'Payment completed successfully',
+                'data' => [
+                    'order' => $updatedOrder['data'],
+                    'transaction' => $transaction,
+                    'wallet_balance' => $wallet->fresh()->balance,
+                ],
+            ];
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Payment processing failed: ' . $e->getMessage(),
+            ];
+        }
     }
 
 }

@@ -23,7 +23,6 @@ class OrderFactory extends Factory
             'status' => fake()->randomElement(['Processing', 'Canceled', 'Completed', 'pending']),
             'total_amount' => fake()->randomFloat(2, 50, 2000),
             'shipping_address' => fake()->address(),
-            'payment_method' => fake()->randomElement(['wallet', 'card', 'cash']),
             'payment_status' => fake()->randomElement(['pending', 'paid', 'failed', 'refunded']),
         ];
     }

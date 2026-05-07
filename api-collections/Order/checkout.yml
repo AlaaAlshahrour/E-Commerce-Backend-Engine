@@ -1,17 +1,17 @@
 info:
-  name: update status
+  name: checkout
   type: http
-  seq: 3
+  seq: 2
 
 http:
-  method: PUT
-  url: "{{base_url}}/orders/31/status"
+  method: POST
+  url: "{{base_url}}/orders/checkout"
   body:
     type: multipart-form
     data:
-      - name: status
+      - name: shipping_address
         type: text
-        value: Processing
+        value: Damascus
   auth: inherit
 
 settings:

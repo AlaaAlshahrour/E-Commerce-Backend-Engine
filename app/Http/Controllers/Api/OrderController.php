@@ -22,30 +22,7 @@ class OrderController extends Controller
         return response()->json(['data' => $result['data']]);
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'shipping_address' => 'required|string',
-            'payment_method'   => 'required|in:wallet,card,cash',
-        ]);
 
-        $result = $this->orderService->createOrder($request->only([
-            'shipping_address',
-            'payment_method',
-        ]));
-
-        if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message'],
-                'data'    => $result['data'] ?? [],
-            ], 422);
-        }
-
-        return response()->json([
-            'message' => $result['message'],
-            'data'    => $result['data'],
-        ], 201);
-    }
 
     public function show(int $id)
     {
@@ -76,4 +53,26 @@ class OrderController extends Controller
         ]);
     }
 
+    public function checkout(Request $request)
+    {
+        $request->validate([
+            'shipping_address' => 'required|string|min:5',
+        ]);
+
+        $result = $this->orderService->checkout($request->only([
+            'shipping_address',
+        ]));
+
+        if (!$result['success']) {
+            return response()->json([
+                'message' => $result['message'],
+                'data'    => $result['data'] ?? [],
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $result['message'],
+            'data'    => $result['data'],
+        ], 201);
+    }
 }
