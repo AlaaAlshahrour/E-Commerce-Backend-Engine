@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,4 +50,12 @@ Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
     Route::get('/',                [InventoryController::class, 'index']);
     Route::get('/{productId}',     [InventoryController::class, 'show']);
     Route::put('/{productId}',     [InventoryController::class, 'update']);
+});
+
+
+Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
+    Route::get('/',                [OrderController::class, 'index']);
+    Route::post('/',               [OrderController::class, 'store']);
+    Route::get('/{id}',            [OrderController::class, 'show']);
+    Route::put('/{id}/status',     [OrderController::class, 'updateStatus']) ->middleware('role:Admin');
 });

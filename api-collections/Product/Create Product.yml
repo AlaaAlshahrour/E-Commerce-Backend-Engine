@@ -1,0 +1,34 @@
+info:
+  name: Create Product
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: iPhone 15
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1200"
+      - name: category_id
+        type: text
+        value: "5"
+      - name: image
+        type: file
+        value:
+          - postman-cloud:///1efdca67-1582-4a60-90f8-ffdc53b327d3
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
