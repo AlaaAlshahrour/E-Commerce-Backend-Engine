@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: "{{base_url}}/orders/2"
+  url: "{{base_url}}/orders/31"
   auth: inherit
 
 settings:

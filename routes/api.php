@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
 
 ////////////   Auth   /////////////////////
@@ -52,10 +53,16 @@ Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
     Route::put('/{productId}',     [InventoryController::class, 'update']);
 });
 
-
+////////   orders   //////////////////
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::get('/',                [OrderController::class, 'index']);
-    Route::post('/',               [OrderController::class, 'store']);
-    Route::get('/{id}',            [OrderController::class, 'show']);
-    Route::put('/{id}/status',     [OrderController::class, 'updateStatus']) ->middleware('role:Admin');
+    Route::post('/checkout',               [OrderController::class, 'checkout']); // Create order + Process payment
+    Route::get('/{order}',         [OrderController::class, 'show']);
+    Route::put('/{id}/status',     [OrderController::class, 'updateStatus'])->middleware('role:Admin');
+});
+
+////////   wallet   //////////////////
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/wallet', [WalletController::class, 'show']);
+    Route::post('/wallet/topup', [WalletController::class, 'topUp']);
 });

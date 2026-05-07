@@ -40,7 +40,6 @@ class OrderRepository
                 'status'           => 'pending',
                 'total_amount'     => $totalAmount,
                 'shipping_address' => $data['shipping_address'],
-                'payment_method'   => $data['payment_method'],
                 'payment_status'   => 'pending',
             ]);
 
@@ -78,7 +77,6 @@ class OrderRepository
             'status'           => $order->status,
             'total_amount'     => (float) $order->total_amount,
             'shipping_address' => $order->shipping_address,
-            'payment_method'   => $order->payment_method,
             'payment_status'   => $order->payment_status,
             'created_at'       => $order->created_at,
             'items'            => $order->orderItems->map(fn($item) => [

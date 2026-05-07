@@ -5,7 +5,13 @@ info:
 
 http:
   method: POST
-  url: "{{base_url}}/add/1"
+  url: "{{base_url}}/cart/add/21"
+  body:
+    type: multipart-form
+    data:
+      - name: quantity
+        type: text
+        value: "3"
   auth: inherit
 
 settings:
