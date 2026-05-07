@@ -23,7 +23,7 @@ class CartController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $result = $this->cartService->addProductToCart($product_id, $request->input('quantity'));
+        $result = $this->cartService->addProductToCartUnsafe($product_id, $request->input('quantity'));
 
         if (!$result['success']) {
             return ResponseHelper::jsonResponse('', $result['message'], 422);
@@ -42,8 +42,8 @@ class CartController extends Controller
         }
 
         return response()->json([
-            'data'        => $result['products'],
-            'total_price' => (float) $result['total_price'],
+            'data' => $result['products'],
+            'total_price' => (float)$result['total_price'],
         ]);
     }
 
@@ -52,10 +52,11 @@ class CartController extends Controller
         $this->cartService->deleteAll();
         return ResponseHelper::jsonResponse('Cart cleared successfully');
     }
+
     public function deleteProducts(Request $request)
     {
         $request->validate([
-            'product_ids'   => 'required|array|min:1',
+            'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'integer',
         ]);
 
@@ -66,21 +67,27 @@ class CartController extends Controller
         }
 
         return response()->json([
-            'message'       => $result['message'],
-            'deleted_ids'   => $result['deleted_ids'],
+            'message' => $result['message'],
+            'deleted_ids' => $result['deleted_ids'],
             'not_found_ids' => $result['not_found_ids'],
         ]);
     }
-    public function update(int $productId, Request $request)
+
+    public function update(Request $request, int $productId)
     {
+        \Log::info($request->all());
         $request->validate([
             'quantity' => 'required|integer|min:1',
+            'lock'=>'sometimes|boolean',
         ]);
+        $lock = $request->boolean('lock');
 
-        $result = $this->cartService->updateProductQuantity(
-            $productId,
-            $request->input('quantity')
-        );
+        $result = $lock ?
+            $this->cartService->updateProductQuantitySafe($productId, $request->input('quantity')) :
+            $this->cartService->updateProductQuantityUnsafe(
+                $productId,
+                $request->input('quantity')
+            );
 
         if (!$result['success']) {
             return response()->json(['message' => $result['message']], 422);
