@@ -1,0 +1,21 @@
+info:
+  name: update status
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/orders/31/status"
+  body:
+    type: multipart-form
+    data:
+      - name: status
+        type: text
+        value: Processing
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

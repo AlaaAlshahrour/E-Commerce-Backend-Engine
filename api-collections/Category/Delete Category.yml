@@ -1,0 +1,18 @@
+info:
+  name: Delete Category
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{base_url}}/categories/1"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

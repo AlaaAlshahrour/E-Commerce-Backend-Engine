@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Transaction extends Model
 {
@@ -13,13 +14,13 @@ class Transaction extends Model
 
     protected $guarded = [];
 
-    public function wallet()
+    public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
     }
 
-    public function payment()
+    public function order(): BelongsTo
     {
-        return $this->hasOne(Payment::class);
+        return $this->belongsTo(Order::class);
     }
 }

@@ -1,0 +1,15 @@
+info:
+  name: update quantity
+  type: http
+  seq: 1
+
+http:
+  method: PUT
+  url: "{{base_url}}/inventory/1"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
