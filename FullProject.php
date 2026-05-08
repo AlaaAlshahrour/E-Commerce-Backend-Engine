@@ -421,3 +421,705 @@ array(),'Illuminate\\Translation\\TranslationServiceProvider' =>
 array(),'Illuminate\\Validation\\ValidationServiceProvider' => 
 array(),'Laravel\\Tinker\\TinkerServiceProvider' => 
 array(),),);
+
+// === [ApiCollections] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Create Category.yml =====
+info:
+  name: Create Category
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/categories"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Create Product.yml =====
+info:
+  name: Create Product
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: iPhone 15
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1200"
+      - name: category_id
+        type: text
+        value: "5"
+      - name: image
+        type: file
+        value:
+          - postman-cloud:///1efdca67-1582-4a60-90f8-ffdc53b327d3
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Delete Category.yml =====
+info:
+  name: Delete Category
+  type: http
+  seq: 5
+http:
+  method: DELETE
+  url: "{{base_url}}/categories/1"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Delete Product.yml =====
+info:
+  name: Delete Product
+  type: http
+  seq: 5
+http:
+  method: DELETE
+  url: "{{base_url}}/products/1"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Get Categories.yml =====
+info:
+  name: Get Categories
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/categories"
+  body:
+    type: multipart-form
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Get Category.yml =====
+info:
+  name: Get Category
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/categories/5"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Get Product.yml =====
+info:
+  name: Get Product
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/products/2"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Get Products.yml =====
+info:
+  name: Get Products
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Login.yml =====
+info:
+  name: Login
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/login"
+  headers:
+    - name: Contant-Type
+      value: application/json
+      disabled: true
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: test@example.com
+      - name: password
+        type: text
+        value: "123456"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        test("Successful POST request", function () {
+            expect(res.getStatus()).to.be.oneOf([200, 201]);
+        });
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+docs: |-
+  This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.
+  A successful POST request typically returns a `200 OK` or `201 Created` response code.
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Logout.yml =====
+info:
+  name: Logout
+  type: http
+  seq: 4
+http:
+  method: POST
+  url: "{{base_url}}/logout"
+  auth:
+    type: bearer
+    token: qJhYEpmWe76jVmVTEv0ieClXFdYA7A8xiLzYtoR9273dceee
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Me.yml =====
+info:
+  name: Me
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/me"
+  auth:
+    type: bearer
+    token: qJhYEpmWe76jVmVTEv0ieClXFdYA7A8xiLzYtoR9273dceee
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Register.yml =====
+info:
+  name: Register
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/register"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: Test User
+      - name: email
+        type: text
+        value: test@example.com
+      - name: password
+        type: text
+        value: "123456"
+      - name: password_confirmation
+        type: text
+        value: "123456"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        test("Status code is 200", function () {
+            expect(res.getStatus()).to.equal(200);
+        });
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+docs: |-
+  This is a GET request and it is used to "get" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).
+  A successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data.
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Update Category.yml =====
+info:
+  name: Update Category
+  type: http
+  seq: 2
+http:
+  method: PUT
+  url: "{{base_url}}/categories/1"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Update Product.yml =====
+info:
+  name: Update Product
+  type: http
+  seq: 2
+http:
+  method: PUT
+  url: "{{base_url}}/products/6"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1000"
+      - name: category_id
+        type: text
+        value: "9"
+      - name: image
+        type: file
+        value: []
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\add to cart.yml =====
+info:
+  name: add to cart
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/cart/add/21"
+  body:
+    type: multipart-form
+    data:
+      - name: quantity
+        type: text
+        value: "3"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\environments\base_url.yml =====
+name: base_url
+variables:
+  - name: base_url
+    value: http://127.0.0.1:8000/api
+  - name: token
+    value: 1|7b7bBX0fn2Semgobgt8ynoLz8NAn7JSgT1Az0G8c426d150c
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\check wallet.yml =====
+info:
+  name: check wallet
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/wallet"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\checkout.yml =====
+info:
+  name: checkout
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/orders/checkout"
+  body:
+    type: multipart-form
+    data:
+      - name: shipping_address
+        type: text
+        value: Damascus
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\clear cart.yml =====
+info:
+  name: clear cart
+  type: http
+  seq: 3
+http:
+  method: DELETE
+  url: "{{base_url}}/cart/clear"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\folder.yml =====
+info:
+  name: Auth
+  type: folder
+  seq: 1
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\folder.yml =====
+info:
+  name: Cart
+  type: folder
+  seq: 4
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\folder.yml =====
+info:
+  name: Category
+  type: folder
+  seq: 2
+request:
+  auth:
+    type: bearer
+    token: ""
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\folder.yml =====
+info:
+  name: Order
+  type: folder
+  seq: 6
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\folder.yml =====
+info:
+  name: Product
+  type: folder
+  seq: 3
+request:
+  auth:
+    type: bearer
+    token: ""
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\folder.yml =====
+info:
+  name: Wallet
+  type: folder
+  seq: 7
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\folder.yml =====
+info:
+  name: inventory
+  type: folder
+  seq: 5
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\get all.yml =====
+info:
+  name: get all
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/orders"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\get all.yml =====
+info:
+  name: get all
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/inventory"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\get products.yml =====
+info:
+  name: get products
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: ""
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\get quantity of product.yml =====
+info:
+  name: get quantity of product
+  type: http
+  seq: 2
+http:
+  method: GET
+  url: ""
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\opencollection.yml =====
+opencollection: 1.0.0
+info:
+  name: E-Commerce-Backend-Engine
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+request:
+  headers:
+    - name: Accept
+      value: application/json
+  auth:
+    type: bearer
+    token: 1|7b7bBX0fn2Semgobgt8ynoLz8NAn7JSgT1Az0G8c426d150c
+  variables:
+    - name: id
+      value: "1"
+    - name: base_url
+      value: ""
+docs:
+  content: |-
+    This template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.
+    RESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.
+    This collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click "Send" to see what happens.
+    Observe the response tab for status code (200 OK), response time, and size.
+    Update or add new data in "Body" in the POST request. Typically, Body data is also used in PUT request.
+    ```
+    {
+        "name": "Add your name in the body"
+    }
+     ```
+    Variables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.
+    Adding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the "Test Results" tab.
+    <img src="https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n" alt="" height="1530" width="2162">
+    - Use folders to group related requests and organize the collection.
+    - Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.
+    [API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  
+    [API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  
+    [Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\remove products.yml =====
+info:
+  name: remove products
+  type: http
+  seq: 4
+http:
+  method: DELETE
+  url: "{{base_url}}/cart/remove"
+  params:
+    - name: ""
+      value: ""
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "product_ids":[3]
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\show.yml =====
+info:
+  name: show
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/orders/31"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\topup.yml =====
+info:
+  name: topup
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/wallet/topup"
+  body:
+    type: multipart-form
+    data:
+      - name: amount
+        type: text
+        value: "9000000.05"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\update quantity.yml =====
+info:
+  name: update quantity
+  type: http
+  seq: 5
+http:
+  method: PATCH
+  url: "{{base_url}}/cart/update/3"
+  body:
+    type: multipart-form
+    data:
+      - name: quantity
+        type: text
+        value: "3"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\update quantity.yml =====
+info:
+  name: update quantity
+  type: http
+  seq: 1
+http:
+  method: PUT
+  url: "{{base_url}}/inventory/1"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\update status.yml =====
+info:
+  name: update status
+  type: http
+  seq: 3
+http:
+  method: PUT
+  url: "{{base_url}}/orders/31/status"
+  body:
+    type: multipart-form
+    data:
+      - name: status
+        type: text
+        value: Processing
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
