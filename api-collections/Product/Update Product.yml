@@ -1,0 +1,33 @@
+info:
+  name: Update Product
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/products/6"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1000"
+      - name: category_id
+        type: text
+        value: "9"
+      - name: image
+        type: file
+        value: []
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

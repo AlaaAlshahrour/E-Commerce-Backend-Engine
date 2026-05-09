@@ -28,8 +28,7 @@ class TransactionFactory extends Factory
             'balance_after' => $balanceBefore + $amount,
             'type' => fake()->randomElement(['deposit', 'withdraw', 'payment', 'refund']),
             'status' => fake()->randomElement(['pending', 'completed', 'failed']),
-            'reference_type' => fake()->randomElement(['order', 'topup', 'refund']),
-            'reference_id' => fake()->numberBetween(1, 1000),
+            'order_id' => null,
         ];
     }
 }

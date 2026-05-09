@@ -18,13 +18,13 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function items()
+    public function orderItems()
     {
         return $this->hasMany(OrderItem::class);
     }
 
-    public function payments()
+    public function transaction()
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasOne(Transaction::class);
     }
 }
