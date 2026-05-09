@@ -82,6 +82,7 @@ class CartController extends Controller
         ]);
         $lock = $request->boolean('lock');
 
+
         $result = $lock ?
             $this->cartService->updateProductQuantitySafe($productId, $request->input('quantity')) :
             $this->cartService->updateProductQuantityUnsafe(
