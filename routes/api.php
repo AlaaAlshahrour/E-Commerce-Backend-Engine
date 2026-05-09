@@ -66,3 +66,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet', [WalletController::class, 'show']);
     Route::post('/wallet/topup', [WalletController::class, 'topUp']);
 });
+
+Route::get('/node-info', function () {
+    return response()->json([
+        'hostname'    => gethostname(),
+        'server_id'   => env('SERVER_ID', 'unknown'),
+        'server_ip'   => request()->server('SERVER_ADDR'),
+        'timestamp'   => now()->toISOString(),
+        'php_version' => PHP_VERSION,
+    ]);
+});
