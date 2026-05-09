@@ -76,3 +76,56 @@ Route::get('/node-info', function () {
         'php_version' => PHP_VERSION,
     ]);
 });
+
+// ← أضف هذا في نهاية الملف
+Route::get('/lb/test/products', function () {
+    $products = \App\Models\Product::with('category')->limit(10)->get();
+    return response()->json([
+        'node'   => gethostname(),
+        'action' => 'GET products',
+        'count'  => $products->count(),
+        'data'   => $products,
+    ]);
+});
+
+Route::get('/lb/test/categories', function () {
+    $categories = \App\Models\Category::all();
+    return response()->json([
+        'node'   => gethostname(),
+        'action' => 'GET categories',
+        'data'   => $categories,
+    ]);
+});
+
+Route::get('/lb/test/inventory', function () {
+    $inventory = \App\Models\Inventory::with('product')->get();
+    return response()->json([
+        'node'   => gethostname(),
+        'action' => 'GET inventory',
+        'data'   => $inventory,
+    ]);
+});
+
+Route::get('/lb/test/orders', function () {
+    $orders = \App\Models\Order::limit(10)->get();
+    usleep(300000); // 300ms
+    return response()->json([
+        'node'   => gethostname(),
+        'action' => 'GET orders',
+        'count'  => $orders->count(),
+        'data'   => $orders,
+    ]);
+});
+
+// هذا فقط يبقى داخل auth
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/lb/test/cart/{product_id}', function ($product_id) {
+        $product = \App\Models\Product::findOrFail($product_id);
+        usleep(300000); // 300ms
+        return response()->json([
+            'node'    => gethostname(),
+            'action'  => 'ADD to cart',
+            'product' => $product->name,
+        ]);
+    });
+});
