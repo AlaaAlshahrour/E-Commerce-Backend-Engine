@@ -18,7 +18,7 @@ class ResponseHelper
         $responseData = [
             'successful' => $successful,
             'message' => $message,
-            'node' => gethostname() . '-' . substr(php_uname('n'), 0, 8),
+            'node' => env('NODE_NAME', gethostname()),
             'data' => $data,
             'page_count' => $pageCount,
             'user_count' => $userCount,

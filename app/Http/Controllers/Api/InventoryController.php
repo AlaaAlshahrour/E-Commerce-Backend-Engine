@@ -24,7 +24,7 @@ class InventoryController extends Controller
             return ResponseHelper::jsonResponse($result['message']);
         }
 
-        return response()->json(['data' => $result['data']]);
+        return ResponseHelper::jsonResponse($result['data'], 201);
     }
 
     public function show(int $productId)

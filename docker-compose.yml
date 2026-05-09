@@ -1,6 +1,5 @@
 services:
 
-    # Load Balancer
     loadbalancer:
         image: nginx:alpine
         container_name: lb-nginx
@@ -10,30 +9,79 @@ services:
             - ./docker/nginx/loadbalancer.conf:/etc/nginx/conf.d/default.conf
             - .:/var/www
         depends_on:
-            - app
+            - app1
+            - app2
+            - app3
         networks:
             - ecommerce-network
 
-    # Laravel App — 3 نسخ متطابقة
-    app:
+    app1:
         build:
+            context: .
+            dockerfile: Dockerfile
             args:
                 user: laravel
                 uid: 1000
+        container_name: app-node-1
+        expose:
+            - "9000"
+        environment:
+            NODE_NAME: "Node-1"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - .:/var/www
+        networks:
+            - ecommerce-network
+
+    app2:
+        build:
             context: .
             dockerfile: Dockerfile
-        deploy:
-            replicas: 3            # ← docker-compose ينشئ 3 containers تلقائياً
-        ports:
-            - "9000"               # بدون HOST port → random port لكل replica
+            args:
+                user: laravel
+                uid: 1000
+        container_name: app-node-2
+        expose:
+            - "9000"
         environment:
-            - DB_HOST=mysql
-            - DB_PORT=3306
-            - DB_DATABASE=ecommerce
-            - DB_USERNAME=laravel
-            - DB_PASSWORD=secret
-            - REDIS_HOST=redis
-            - REDIS_PORT=6379
+            NODE_NAME: "Node-2"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - .:/var/www
+        networks:
+            - ecommerce-network
+
+    app3:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                user: laravel
+                uid: 1000
+        container_name: app-node-3
+        expose:
+            - "9000"
+        environment:
+            NODE_NAME: "Node-3"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
         volumes:
             - .:/var/www
         networks:

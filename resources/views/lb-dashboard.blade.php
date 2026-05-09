@@ -291,7 +291,6 @@
 <h1>⚖️ Load Balancer Dashboard</h1>
 <p class="subtitle">Least Connections — NGINX + Docker — Real-time monitoring</p>
 
-<!-- Auth Status Bar -->
 <div class="auth-bar">
     <span class="auth-status" id="auth-status">
         <span class="auth-pending">⏳ جاري تسجيل الدخول تلقائياً...</span>
@@ -322,35 +321,14 @@
 <div class="log-area" id="log"></div>
 
 <script>
-    // ─── الـ APIs ───────────────────────────────────────────
     const ACTIONS = [
-        // APIs حقيقية - بدون auth
         {name: 'Products API', method: 'GET', url: '/api/products', color: '#065f46', auth: false, real: true},
         {name: 'Categories API', method: 'GET', url: '/api/categories', color: '#1e3a5f', auth: false, real: true},
 
-        // APIs حقيقية - تحتاج auth
         {name: 'Inventory API', method: 'GET', url: '/api/inventory', color: '#7c2d12', auth: true, real: true},
         {name: 'Orders API', method: 'GET', url: '/api/orders', color: '#3b0764', auth: true, real: true},
         {name: 'My Profile', method: 'GET', url: '/api/me', color: '#164e63', auth: true, real: true},
 
-        // APIs تجريبية - للمقارنة
-        {name: 'Node Info', method: 'GET', url: '/api/node-info', color: '#374151', auth: false, real: false},
-        {
-            name: 'Test Products',
-            method: 'GET',
-            url: '/api/lb/test/products',
-            color: '#374151',
-            auth: false,
-            real: false
-        },
-        {
-            name: 'Test Inventory',
-            method: 'GET',
-            url: '/api/lb/test/inventory',
-            color: '#374151',
-            auth: false,
-            real: false
-        },
     ];
 
     let selectedAction = ACTIONS[0];
@@ -359,19 +337,18 @@
     let autoTimer = null;
     let token = localStorage.getItem('lb_token') || null;
 
-    // ─── تسجيل الدخول ───────────────────────────────────────
     async function loginFirst(manual = false) {
         document.getElementById('auth-status').innerHTML =
             '<span class="auth-pending">⏳ جاري تسجيل الدخول...</span>';
 
         if (!manual && token) {
-            // تحقق أن الـ token لا يزال صالحاً
+
             const valid = await verifyToken();
             if (valid) {
                 showAuthOk();
                 return true;
             }
-            // الـ token منتهي — احذفه وأعد تسجيل الدخول
+
             token = null;
             localStorage.removeItem('lb_token');
         }
@@ -433,7 +410,7 @@
         document.getElementById('token-preview').textContent = '';
     }
 
-    // ─── بناء أزرار الـ Actions ─────────────────────────────
+
     function buildActions() {
         const grid = document.getElementById('actions-grid');
         let html = '<div class="divider">── APIs حقيقية ──</div>';
@@ -462,11 +439,11 @@
         buildActions();
     }
 
-    // ─── إرسال الطلبات ──────────────────────────────────────
+
     async function fetchRequest() {
         const action = selectedAction;
 
-        // إذا يحتاج auth وليس عندنا token — سجّل دخول أولاً
+
         if (action.auth && !token) {
             const ok = await loginFirst();
             if (!ok) {
@@ -497,8 +474,7 @@
 
             if (!res.ok) throw new Error(data.message || res.statusText);
 
-            // استخرج اسم الـ node من الـ response
-            const host = data.node || data.hostname || extractNode(res) || 'unknown';
+            const host = data.node || data.hostname || 'unknown';
             recordRequest(host, ms, action.name, false);
 
         } catch (e) {
@@ -508,35 +484,43 @@
     }
 
     function extractNode(res) {
-        // اقرأ من الـ header إذا لم يكن في الـ body
-        return res.headers.get('X-Node') || res.headers.get('X-Upstream') || null;
+        return null;
     }
 
-    // ─── تسجيل النتائج ──────────────────────────────────────
+
     function recordRequest(host, ms, action, isError) {
         total++;
         reqLast++;
         if (isError) errorCount++; else successCount++;
 
-        document.getElementById('total').textContent = total;
+        document.getElementById('total').textContent   = total;
         document.getElementById('success').textContent = successCount;
-        document.getElementById('errors').textContent = errorCount;
+        document.getElementById('errors').textContent  = errorCount;
 
-        if (host !== 'error') {
-            if (!stats[host]) {
-                stats[host] = {count: 0, totalMs: 0, lastMs: 0, lastSeen: null, _lastTime: 0};
+        // ← تجاهل أي host غير Node-1/2/3
+        const validHosts = ['Node-1', 'Node-2', 'Node-3'];
+        const cleanHost  = validHosts.includes(host) ? host : null;
+
+        if (cleanHost) {
+            if (!stats[cleanHost]) {
+                stats[cleanHost] = {count: 0, totalMs: 0, lastMs: 0, lastSeen: null, _lastTime: 0};
             }
-            stats[host].count++;
-            stats[host].totalMs += ms;
-            stats[host].lastMs = ms;
-            stats[host].lastSeen = new Date().toLocaleTimeString('ar');
-            stats[host]._lastTime = Date.now();
+            stats[cleanHost].count++;
+            stats[cleanHost].totalMs  += ms;
+            stats[cleanHost].lastMs    = ms;
+            stats[cleanHost].lastSeen  = new Date().toLocaleTimeString('ar');
+            stats[cleanHost]._lastTime = Date.now();
         }
 
         renderNodes();
-        addLog(new Date().toLocaleTimeString('ar'), host, ms, action, isError);
+        addLog(
+            new Date().toLocaleTimeString('ar'),
+            cleanHost || host,
+            ms,
+            action,
+            isError
+        );
     }
-
     function renderNodes() {
         const grid = document.getElementById('nodes-grid');
         const hosts = Object.keys(stats).sort();
@@ -625,15 +609,14 @@
         document.getElementById('log').innerHTML = '';
     }
 
-    // ─── RPS Counter ────────────────────────────────────────
     setInterval(() => {
         document.getElementById('rps').textContent = reqLast;
         reqLast = 0;
     }, 1000);
 
-    // ─── ابدأ ───────────────────────────────────────────────
+
     buildActions();
-    loginFirst();          // تسجيل دخول تلقائي عند فتح الصفحة
+    loginFirst();
 </script>
 </body>
 </html>
