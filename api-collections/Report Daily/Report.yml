@@ -1,0 +1,15 @@
+info:
+  name: Report
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/daily-sales-report/2026-05-09"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

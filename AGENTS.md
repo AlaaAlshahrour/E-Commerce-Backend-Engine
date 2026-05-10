@@ -39,6 +39,58 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
 
+### Repository & Service Pattern
+
+This application uses a **Repository pattern for data access** and a **Service layer for business logic**:
+- **Repositories** (`app/Repositories/`) - Handle all database queries and transactions (see `OrderRepository`, `CartRepository`, `InventoryRepository`)
+- **Services** (`app/Services/`) - Contain business logic and coordinate between repositories; are dependency-injected into controllers
+- **Controllers** (`app/Http/Controllers/Api/`) - Accept dependencies via constructor promotion and delegate to services
+
+Example service structure:
+```php
+public function __construct(protected OrderRepository $orderRepository) {}
+
+public function checkout(array $data): array
+{
+    // Use repository to query/create data
+    $cartItems = $this->orderRepository->getCartItems($userId);
+    // Return formatted array with ['success' => bool, 'data' => $data, 'message' => string]
+}
+```
+
+### Response Format Convention
+
+All API responses use the custom `ResponseHelper::jsonResponse()` from `app/Helpers/ResponseHelper.php`:
+- Format: `{ successful: bool, message: string, data: mixed, status_code: int }`
+- Use in controllers: `return ResponseHelper::jsonResponse($data, 'Success message', 200);`
+- For errors: `return ResponseHelper::jsonResponse(null, 'Error message', 400, false);`
+
+### API Endpoint Structure
+
+- Public read endpoints throttled with `throttle:public-api`
+- Authenticated endpoints use `auth:sanctum` middleware
+- Admin-only endpoints use `role:Admin` middleware (aliased to `EnsureUserIsAdmin`)
+- Domain-specific throttling on sensitive operations: `throttle:checkout`, `throttle:cart`, `throttle:inventory-update`
+
+### Database Transactions
+
+Repositories wrap create/update operations in transactions using `DB::transaction()`:
+```php
+return DB::transaction(function () use ($userId, $data) {
+    $order = Order::create([...]);
+    OrderItem::create([...]);
+    return $order;
+});
+```
+
+### Background Jobs
+
+Background jobs in `app/Jobs/` are dispatched for long-running operations. Key jobs:
+- `GenerateInvoicePdfJob` - Generates PDF invoices for orders
+- `ProcessDailySalesJob` - Calculates daily sales reports
+
+Dispatch with `dispatch(new JobClass());`.
+
 ## Frontend Bundling
 
 - If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
@@ -119,9 +171,16 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `php artisan make:model --help` to check the available options.
 
+### Form Requests & Validation
+
+- All controller actions that accept input use Form Requests (in `app/Http/Requests/`) with explicit `rules()` and `authorize()` methods.
+- Inject form requests into controller methods as type-hinted parameters for automatic validation before the action runs.
+- Example: `public function store(StoreProductRequest $request)` - validation happens before reaching the method.
+
 ## APIs & Eloquent Resources
 
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+- This application does NOT use Eloquent API Resources. Instead, return model instances directly with `ResponseHelper::jsonResponse()`.
+- Follow the existing controller/service/repository pattern documented in the Architecture section above.
 
 ## URL Generation
 
@@ -132,6 +191,13 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
 - Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
 - When creating tests, make use of `php artisan make:test [options] {name}` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
+
+### E-Commerce Domain Test Patterns
+
+- Test the Service → Repository → Model flow: service methods should properly use repositories
+- Auth tests should verify user registration, token creation, and role-based access control
+- Cart/Inventory tests should verify stock availability constraints and quantity updates
+- Order tests should verify checkout flow, transaction rollback on insufficient stock, and payment processing
 
 ## Vite Error
 
@@ -161,5 +227,37 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - To run all tests: `php artisan test --compact`.
 - To run all tests in a file: `php artisan test --compact tests/Feature/ExampleTest.php`.
 - To filter on a particular test name: `php artisan test --compact --filter=testName` (recommended after making a change to a related file).
+
+=== ecommerce/core rules ===
+
+# E-Commerce Domain
+
+## Core Models & Relationships
+
+This is a Laravel e-commerce backend. Key models are in `app/Models/`:
+- **User** - Authenticatable; has one Cart, one Wallet, many Orders
+- **Product** - Has one Inventory, belongs to Category; has many CartItems and OrderItems
+- **Category** - Has many Products
+- **Cart** - Belongs to User; has many CartItems (line items)
+- **CartItem** - Belongs to Cart and Product
+- **Order** - Belongs to User; has many OrderItems; tracks status/payment_status
+- **OrderItem** - Belongs to Order and Product
+- **Inventory** - Belongs to Product; tracks quantity in stock
+- **Wallet** - Belongs to User; tracks balance for payments
+- **Transaction** - Logs wallet top-ups and order payments
+- **DailySalesReport** - Aggregates sales data by date
+
+## Key Service & Repository Classes
+
+- `OrderService`, `OrderRepository` - Manages checkout, order creation, status updates
+- `CartService`, `CartRepository` - Manages cart operations (add, remove, update, clear)
+- `InventoryService`, `InventoryRepository` - Manages stock availability and updates
+
+## Critical Constraints
+
+- **Inventory Management** - Before creating an order, verify each cart item's product has sufficient inventory quantity (see `OrderService::checkout()`)
+- **Transaction Safety** - Order creation wraps cart-to-order conversion in DB transaction (see `OrderRepository::createOrder()`)
+- **Payment Flow** - Orders can be paid via wallet; insufficient wallet balance must be validated
+- **Role-Based Access** - Admin role required for product/category management and order status updates (route middleware `role:Admin`)
 
 </laravel-boost-guidelines>

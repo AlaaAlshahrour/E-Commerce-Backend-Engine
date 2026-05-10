@@ -17,6 +17,9 @@ namespace App\Http\Controllers\Api;class CartController extends Controller{prote
 namespace App\Http\Controllers\Api;class CategoryController extends Controller{public function index(){$categories = Category::all();return ResponseHelper::jsonResponse($categories,'Categories retrieved successfully');}public function store(StoreCategoryRequest $request){$category = Category::create($request->validated());return ResponseHelper::jsonResponse($category,'Category created successfully',201);}public function show(Category $category){return ResponseHelper::jsonResponse($category,'Category retrieved successfully');}public function update(UpdateCategoryRequest $request,Category $category){$category->update($request->validated());return ResponseHelper::jsonResponse($category,'Category updated successfully');}public function destroy(Category $category){$category->delete();return ResponseHelper::jsonResponse(null,'Category deleted successfully');}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Controller.php =====
 namespace App\Http\Controllers;abstract class Controller{}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\DailySalesReportController.php =====
+namespace App\Http\Controllers;class DailySalesReportController extends Controller{public function show(string $date){$report = DailySalesReport::where('date',$date)->first();if(! $report){return response()->json(['message' => 'Report not found for the given date.'],404);}return response()->json([
+'date' => $report->date,'total_orders' => $report->total_orders,'total_revenue' => $report->total_revenue,'pdf_url' => Storage::url($report->pdf_path),]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\InventoryController.php =====
 namespace App\Http\Controllers\Api;class InventoryController extends Controller{protected $inventoryService;public function __construct(InventoryService $inventoryService){$this->inventoryService = $inventoryService;}public function index(){$result = $this->inventoryService->getAll();if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function show(int $productId){$result = $this->inventoryService->getByProductId($productId);if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function update(int $productId,Request $request){$request->validate([
 'quantity' => 'required|integer|min:0',]);$result = $this->inventoryService->updateQuantity($productId,$request->input('quantity'));if(!$result['success']){return ResponseHelper::jsonResponse('',$result['message'],404);}return ResponseHelper::jsonResponse($result['message']);}}
@@ -68,6 +71,9 @@ namespace App\Models;class Cart extends Model{use HasFactory;protected $guarded 
 namespace App\Models;class CartItem extends Model{use HasFactory;protected $guarded = [];public function cart(){return $this->belongsTo(Cart::class);}public function product(){return $this->belongsTo(Product::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Category.php =====
 namespace App\Models;class Category extends Model{use HasFactory;protected $guarded = [];public function products(){return $this->hasMany(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\DailySalesReport.php =====
+namespace App\Models;class DailySalesReport extends Model{protected $fillable = ['date','total_orders','total_revenue','pdf_path'];protected $casts = [
+'date' => 'date','total_revenue' => 'decimal:2',];}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Inventory.php =====
 namespace App\Models;class Inventory extends Model{use HasFactory;protected $guarded = [];public function product(){return $this->belongsTo(Product::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Order.php =====
@@ -148,6 +154,8 @@ return new class extends Migration{public function up(): void{Schema::create('wa
 return new class extends Migration{public function up(): void{Schema::create('transactions',function(Blueprint $table){$table->id();$table->foreignIdFor(Wallet::class)->constrained();$table->foreignIdFor(Order::class)->nullable()->constrained()->nullOnDelete();$table->decimal('amount',10,2);$table->decimal('balance_before',10,2);$table->decimal('balance_after',10,2);$table->enum('type',['deposit','withdraw','payment','refund']);$table->enum('status',['pending','completed','failed']);$table->timestamps();});}public function down(): void{Schema::dropIfExists('transactions');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_04_111058_create_personal_access_tokens_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('personal_access_tokens',function(Blueprint $table){$table->id();$table->morphs('tokenable');$table->text('name');$table->string('token',64)->unique();$table->text('abilities')->nullable();$table->timestamp('last_used_at')->nullable();$table->timestamp('expires_at')->nullable()->index();$table->timestamps();});}public function down(): void{Schema::dropIfExists('personal_access_tokens');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_10_121209_create_daily_sales_reports_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('daily_sales_reports',function(Blueprint $table){$table->id();$table->date('date')->unique();$table->integer('total_orders')->default(0);$table->decimal('total_revenue',15,2)->default(0);$table->string('pdf_path')->nullable();$table->timestamps();});}public function down(): void{Schema::dropIfExists('daily_sales_reports');}};
 
 // === [Seeders] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartItemSeeder.php =====
@@ -211,7 +219,7 @@ namespace Database\Factories;class WalletFactory extends Factory{public function
 
 // === [Bootstrap] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
-return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->throttleWithRedis();$middleware->alias([
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->alias([
 'role' => \App\Http\Middleware\EnsureUserIsAdmin::class,]);})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});$exceptions->render(function(NotFoundHttpException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Resource not found.',404,false);}});})->create();
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
 return array('barryvdh/laravel-dompdf' => 
@@ -400,14 +408,36 @@ return [
 // === [Routes] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\api.php =====
 Route::post('/register',[AuthController::class,'register'])->middleware('throttle:register')->name('register');Route::post('/login',[AuthController::class,'login'])->middleware('throttle:login')->name('login');Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});Route::middleware('throttle:public-api')->group(function(){Route::apiResource('products',ProductController::class)->except(['store','update','destroy']);Route::apiResource('categories',CategoryController::class)->except(['store','update','destroy']);});Route::middleware('auth:sanctum')->group(function(){Route::apiResource('products',ProductController::class)->except(['index','show']);Route::apiResource('categories',CategoryController::class)->except(['index','show']);});Route::middleware(['auth:sanctum','throttle:cart'])->prefix('cart')->group(function(){Route::post('/add/{product_id}',[CartController::class,'add']);Route::get('/',[CartController::class,'getCartProducts']);Route::delete('/clear',[CartController::class,'deleteAll']);Route::delete('/remove',[CartController::class,'deleteProducts']);Route::patch('/update/{product_id}',[CartController::class,'update']);});Route::middleware(['auth:sanctum','throttle:inventory-update'])->prefix('inventory')->group(function(){Route::get('/',[InventoryController::class,'index']);Route::get('/{productId}',[InventoryController::class,'show']);Route::put('/{productId}',[InventoryController::class,'update']);});Route::middleware('auth:sanctum')->prefix('orders')->group(function(){Route::get('/',[OrderController::class,'index'])->middleware('throttle:authenticated-api');Route::post('/checkout',[OrderController::class,'checkout'])->middleware('throttle:checkout');Route::get('/{order}',[OrderController::class,'show'])->middleware('throttle:authenticated-api');Route::put('/{id}/status',[OrderController::class,'updateStatus'])->middleware([
-'role:Admin','throttle:admin-actions'
-]);});Route::middleware('auth:sanctum')->group(function(){Route::get('/wallet',[WalletController::class,'show'])->middleware('throttle:authenticated-api');Route::post('/wallet/topup',[WalletController::class,'topUp'])->middleware('throttle:wallet');});Route::get('/test-checkout',function(){Auth::loginUsingId(1);$service = app(App\Services\OrderService::class);return $service->checkout([
-'shipping_address' => 'Damascus'
-]);});
+'role:Admin','throttle:admin-actions',]);});Route::middleware('auth:sanctum')->group(function(){Route::get('/wallet',[WalletController::class,'show'])->middleware('throttle:authenticated-api');Route::post('/wallet/topup',[WalletController::class,'topUp'])->middleware('throttle:wallet');});Route::middleware('auth:sanctum')->group(function(){Route::get('/daily-sales-report/{date}',[DailySalesReportController::class,'show']);});Route::get('/test-checkout',function(){Auth::loginUsingId(1);$service = app(OrderService::class);return $service->checkout([
+'shipping_address' => 'Damascus',]);});
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\console.php =====
 Artisan::command('inspire',function(){$this->comment(Inspiring::quote());})->purpose('Display an inspiring quote');
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\web.php =====
 Route::get('/',function(){return view('welcome');});
+
+// === [Tests] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\DailySalesInventoryJobTest.php =====
+namespace Tests\Feature;class DailySalesInventoryJobTest extends TestCase{use RefreshDatabase;public function test_daily_sales_inventory_job_updates_inventory_correctly(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Completed','created_at' => Carbon::yesterday(),]);$orderItem = OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,'unit_price' => 50.00,]);$job = new DailySalesInventoryJob;$job->handle();$inventory->refresh();$this->assertEquals(90,$inventory->quantity);}public function test_job_does_not_update_inventory_for_non_completed_orders(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Processing','created_at' => Carbon::yesterday(),]);OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,]);$job = new DailySalesInventoryJob;$job->handle();$inventory->refresh();$this->assertEquals(100,$inventory->quantity);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\ExampleTest.php =====
+namespace Tests\Feature;class ExampleTest extends TestCase{public function test_the_application_returns_a_successful_response(): void{$response = $this->get('/');$response->assertStatus(200);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Unit\ExampleTest.php =====
+namespace Tests\Unit;class ExampleTest extends TestCase{public function test_that_true_is_true(): void{$this->assertTrue(true);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\ProcessDailySalesJobTest.php =====
+namespace Tests\Feature;class ProcessDailySalesJobTest extends TestCase{use RefreshDatabase;public function test_process_daily_sales_job_creates_report_and_updates_inventory(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Completed','payment_status' => 'paid','total_amount' => 200.00,'created_at' => Carbon::yesterday(),]);$orderItem = OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,'unit_price' => 20.00,]);$job = new ProcessDailySalesJob;$job->handle();$inventory->refresh();$this->assertEquals(90,$inventory->quantity);$report = DailySalesReport::where('date',Carbon::yesterday()->toDateString())->first();$this->assertNotNull($report);$this->assertEquals(1,$report->total_orders);$this->assertEquals(200.00,$report->total_revenue);$this->assertNotNull($report->pdf_path);}public function test_job_skips_if_report_already_exists(): void{DailySalesReport::create([
+'date' => Carbon::yesterday()->toDateString(),'total_orders' => 0,'total_revenue' => 0.0,'pdf_path' => null,]);$job = new ProcessDailySalesJob;$job->handle();$report = DailySalesReport::where('date',Carbon::yesterday()->toDateString())->first();$this->assertEquals(0,$report->total_orders);}public function test_api_returns_report_data(): void{$report = DailySalesReport::create([
+'date' => '2023-10-01','total_orders' => 5,'total_revenue' => 1000.00,'pdf_path' => 'public/daily-reports/test.pdf',]);$user = User::factory()->create();$this->actingAs($user,'sanctum');$response = $this->getJson('/api/daily-sales-report/2023-10-01');$response->assertStatus(200)->assertJsonFragment([
+'total_orders' => 5,'pdf_url' => '/storage/daily-reports/test.pdf',]);}public function test_api_returns_404_if_report_not_found(): void{$user = User::factory()->create();$this->actingAs($user,'sanctum');$response = $this->getJson('/api/daily-sales-report/2023-10-01');$response->assertStatus(404)->assertJson(['message' => 'Report not found for the given date.']);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\TestCase.php =====
+namespace Tests;abstract class TestCase extends BaseTestCase{}
 
 // === [ApiCollections] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Create Category.yml =====
@@ -683,6 +713,21 @@ docs: |-
   This is a GET request and it is used to "get" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).
   A successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data.
 
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Report Daily\Report.yml =====
+info:
+  name: Report
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/daily-sales-report/2026-05-09"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Update Category.yml =====
 info:
   name: Update Category
@@ -861,6 +906,14 @@ request:
     type: bearer
     token: ""
 
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Report Daily\folder.yml =====
+info:
+  name: Report Daily
+  type: folder
+  seq: 8
+request:
+  auth: inherit
+
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\folder.yml =====
 info:
   name: Wallet
@@ -958,7 +1011,7 @@ request:
       value: application/json
   auth:
     type: bearer
-    token: 1|7b7bBX0fn2Semgobgt8ynoLz8NAn7JSgT1Az0G8c426d150c
+    token: 1|ehtskzvTpD5GpJ3Ro5tsu5UxRc1SBoFAy8t88Td3e0c10d48
   variables:
     - name: id
       value: "1"

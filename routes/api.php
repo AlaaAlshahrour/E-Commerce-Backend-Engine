@@ -7,12 +7,13 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\WalletController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DailySalesReportController;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Route;
 
-
-
-////////////   Auth   /////////////////////
+// //////////   Auth   /////////////////////
 
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register')->name('register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
@@ -22,8 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 });
 
-////////   Product & Category   //////////////////
-
+// //////   Product & Category   //////////////////
 
 Route::middleware('throttle:public-api')->group(function () {
     Route::apiResource('products', ProductController::class)
@@ -33,7 +33,6 @@ Route::middleware('throttle:public-api')->group(function () {
         ->except(['store', 'update', 'destroy']);
 });
 
-
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('products', ProductController::class)
@@ -43,43 +42,46 @@ Route::middleware('auth:sanctum')->group(function () {
         ->except(['index', 'show']);
 });
 
-////////   cart   //////////////////
+// //////   cart   //////////////////
 
 Route::middleware(['auth:sanctum', 'throttle:cart'])->prefix('cart')->group(function () {
-    Route::post('/add/{product_id}',  [CartController::class, 'add']);
-    Route::get('/',                   [CartController::class, 'getCartProducts']);
-    Route::delete('/clear',           [CartController::class, 'deleteAll']);
-    Route::delete('/remove',         [CartController::class, 'deleteProducts']);
-    Route::patch('/update/{product_id}',     [CartController::class, 'update']);
+    Route::post('/add/{product_id}', [CartController::class, 'add']);
+    Route::get('/', [CartController::class, 'getCartProducts']);
+    Route::delete('/clear', [CartController::class, 'deleteAll']);
+    Route::delete('/remove', [CartController::class, 'deleteProducts']);
+    Route::patch('/update/{product_id}', [CartController::class, 'update']);
 });
 
-////////   inventory   //////////////////
+// //////   inventory   //////////////////
 Route::middleware(['auth:sanctum', 'throttle:inventory-update'])->prefix('inventory')->group(function () {
-    Route::get('/',                [InventoryController::class, 'index']);
-    Route::get('/{productId}',     [InventoryController::class, 'show']);
-    Route::put('/{productId}',     [InventoryController::class, 'update']);
+    Route::get('/', [InventoryController::class, 'index']);
+    Route::get('/{productId}', [InventoryController::class, 'show']);
+    Route::put('/{productId}', [InventoryController::class, 'update']);
 });
 
-////////   orders   //////////////////
+// //////   orders   //////////////////
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
-    Route::get('/',                [OrderController::class, 'index'])->middleware('throttle:authenticated-api');
-    Route::post('/checkout',               [OrderController::class, 'checkout'])->middleware('throttle:checkout');
-    Route::get('/{order}',         [OrderController::class, 'show'])->middleware('throttle:authenticated-api');
-    Route::put('/{id}/status',     [OrderController::class, 'updateStatus'])->middleware([
-            'role:Admin',
-            'throttle:admin-actions'
-        ]);
+    Route::get('/', [OrderController::class, 'index'])->middleware('throttle:authenticated-api');
+    Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('throttle:checkout');
+    Route::get('/{order}', [OrderController::class, 'show'])->middleware('throttle:authenticated-api');
+    Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->middleware([
+        'role:Admin',
+        'throttle:admin-actions',
+    ]);
 });
 
-
-////////   wallet   //////////////////
+// //////   wallet   //////////////////
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet', [WalletController::class, 'show'])->middleware('throttle:authenticated-api');
     Route::post('/wallet/topup', [WalletController::class, 'topUp'])->middleware('throttle:wallet');
 });
 
+// //////   daily sales report   //////////////////
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/daily-sales-report/{date}', [DailySalesReportController::class, 'show']);
+});
 
-////////   Testing Manar   //////////////////
+// //////   Testing Manar   //////////////////
 
 // Route::get('/test-job', function () {
 //     dispatch(new TestBackgroundJob());
@@ -127,14 +129,13 @@ Route::middleware('auth:sanctum')->group(function () {
 //     return $pdf->download('invoice.pdf');
 // });
 
-use Illuminate\Support\Facades\Auth;
 Route::get('/test-checkout', function () {
 
     Auth::loginUsingId(1);
 
-    $service = app(App\Services\OrderService::class);
+    $service = app(OrderService::class);
 
     return $service->checkout([
-        'shipping_address' => 'Damascus'
+        'shipping_address' => 'Damascus',
     ]);
 });

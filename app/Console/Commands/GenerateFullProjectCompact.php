@@ -36,6 +36,7 @@ class GenerateFullProjectCompact extends Command
             'Bootstrap' => base_path('Bootstrap'),
             'Config' => base_path('config'),
             'Routes' => base_path('routes'),
+            'Tests' => base_path('Tests'),
             //    'Resources_view' => base_path('resources/views'),
             //    'Resources_view_layouts' => base_path('resources/views/layouts'),
             //    'Resources_view_layouts_main' => base_path('resources/views/layouts_main'),
