@@ -20,7 +20,7 @@ request:
       value: application/json
   auth:
     type: bearer
-    token: 1|7b7bBX0fn2Semgobgt8ynoLz8NAn7JSgT1Az0G8c426d150c
+    token: 1|ehtskzvTpD5GpJ3Ro5tsu5UxRc1SBoFAy8t88Td3e0c10d48
   variables:
     - name: id
       value: "1"

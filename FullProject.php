@@ -17,42 +17,9 @@ namespace App\Http\Controllers\Api;class CartController extends Controller{prote
 namespace App\Http\Controllers\Api;class CategoryController extends Controller{public function index(){$categories = Category::all();return ResponseHelper::jsonResponse($categories,'Categories retrieved successfully');}public function store(StoreCategoryRequest $request){$category = Category::create($request->validated());return ResponseHelper::jsonResponse($category,'Category created successfully',201);}public function show(Category $category){return ResponseHelper::jsonResponse($category,'Category retrieved successfully');}public function update(UpdateCategoryRequest $request,Category $category){$category->update($request->validated());return ResponseHelper::jsonResponse($category,'Category updated successfully');}public function destroy(Category $category){$category->delete();return ResponseHelper::jsonResponse(null,'Category deleted successfully');}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Controller.php =====
 namespace App\Http\Controllers;abstract class Controller{}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\InventoryController.php =====
-namespace App\Http\Controllers\Api;class InventoryController extends Controller{protected $inventoryService;public function __construct(InventoryService $inventoryService){$this->inventoryService = $inventoryService;}public function index(){$result = $this->inventoryService->getAll();if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function show(int $productId){$result = $this->inventoryService->getByProductId($productId);if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function update(int $productId,Request $request){$request->validate([
-'quantity' => 'required|integer|min:0',]);$result = $this->inventoryService->updateQuantity($productId,$request->input('quantity'));if(!$result['success']){return ResponseHelper::jsonResponse('',$result['message'],404);}return ResponseHelper::jsonResponse($result['message']);}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\OrderController.php =====
-namespace App\Http\Controllers\Api;class OrderController extends Controller{public function __construct(protected OrderService $orderService){}public function index(){$result = $this->orderService->getUserOrders();if(!$result['success']){return ResponseHelper::jsonResponse($result['message'],'',404);}return response()->json(['data' => $result['data']]);}public function show(int $id){$result = $this->orderService->getOrderById($id);if(!$result['success']){return ResponseHelper::jsonResponse($result['message'],'',404);}return response()->json(['data' => $result['data']]);}public function updateStatus(int $id,Request $request){$request->validate([
-'status' => 'required|in:Processing,Canceled,Completed,pending',]);$result = $this->orderService->updateStatus($id,$request->input('status'));if(!$result['success']){return response()->json(['message' => $result['message']],422);}return response()->json([
-'message' => $result['message'],'data' => $result['data'],]);}public function checkout(Request $request){$request->validate([
-'shipping_address' => 'required|string|min:5',]);$result = $this->orderService->checkout($request->only([
-'shipping_address',]));if(!$result['success']){return response()->json([
-'message' => $result['message'],'data' => $result['data'] ?? [],],422);}return response()->json([
-'message' => $result['message'],'data' => $result['data'],],201);}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\ProductController.php =====
-namespace App\Http\Controllers\Api;class ProductController extends Controller{public function index(Request $request){$query = Product::with('category');if($request->category_id){$query->where('category_id',$request->category_id);}if($request->min_price){$query->where('price','>=',$request->min_price);}if($request->max_price){$query->where('price','<=',$request->max_price);}if($request->search){$query->where('name','like',"%{$request->search}%");}$products = $query->paginate(10);return ResponseHelper::jsonResponse($products,'Products retrieved successfully');}public function store(StoreProductRequest $request){$data = $request->validated();if($request->hasFile('image')){$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product = Product::create($data);Inventory::create([
-'product_id' => $product->id,'quantity' => 0,]);return ResponseHelper::jsonResponse($product,'Product created successfully',201);}public function show(Product $product){return ResponseHelper::jsonResponse($product->load('category'),'Product retrieved successfully');}public function update(UpdateProductRequest $request,Product $product){$data = $request->validated();if($request->hasFile('image')){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$path = $request->file('image')->store('products','public');$data['photo_url'] = Storage::url($path);}unset($data['image']);$product->update($data);return ResponseHelper::jsonResponse($product,'Product updated successfully');}public function destroy(Product $product){if($product->photo_url){$oldPath = str_replace('/storage/','',$product->photo_url);Storage::disk('public')->delete($oldPath);}$product->delete();return ResponseHelper::jsonResponse(null,'Product deleted successfully');}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\WalletController.php =====
-namespace App\Http\Controllers\Api;class WalletController extends Controller{public function show(Request $request){$wallet = $request->user()->wallet;if(!$wallet){return ResponseHelper::jsonResponse([],'Wallet not found',404);}$transactions = Transaction::where('wallet_id',$wallet->id)->orderBy('created_at','desc')->limit(10)->get();return ResponseHelper::jsonResponse([
-'balance' => $wallet->balance,'transactions' => $transactions
-]);}public function topUp(TopUpRequest $request){$user = $request->user();$wallet = $user->wallet;if(!$wallet){$wallet = Wallet::create([
-'user_id' => $user->id,'balance' => 0,'is_active' => true,]);}if(!$wallet || !$wallet->is_active){return ResponseHelper::jsonResponse([],'Wallet not found or inactive',422);}DB::transaction(function()use($wallet,$request){$amount = $request->amount;$balanceBefore = $wallet->balance;$wallet->increment('balance',$amount);Transaction::create([
-'wallet_id' => $wallet->id,'order_id' => null,'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore + $amount,'type' => 'deposit','status' => 'completed',]);});return ResponseHelper::jsonResponse(['balance' => $wallet->fresh()->balance],'Top up successful');}}
-
-// === [ApiControllers] ===
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\AuthController.php =====
-namespace App\Http\Controllers\Api;class AuthController extends Controller{public function register(RegisterRequest $request): JsonResponse{$user = User::create([
-'name' => $request->name,'email' => $request->email,'password' => Hash::make($request->password),]);$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
-'user' => $user,'token' => $token,],'User registered successfully',201);}public function login(LoginRequest $request): JsonResponse{if(! Auth::attempt($request->only('email','password'))){return ResponseHelper::jsonResponse(null,'Invalid credentials',401,false);}$user = Auth::user();$token = $user->createToken('auth_token')->plainTextToken;return ResponseHelper::jsonResponse([
-'user' => $user,'token' => $token,],'Login successful');}public function logout(Request $request): JsonResponse{$request->user()->currentAccessToken()->delete();return ResponseHelper::jsonResponse(null,'Logged out successfully');}public function me(Request $request): JsonResponse{return ResponseHelper::jsonResponse($request->user(),'User profile retrieved');}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\CartController.php =====
-namespace App\Http\Controllers\Api;class CartController extends Controller{protected $cartService;public function __construct(CartService $cartService){$this->cartService = $cartService;}public function add(int $product_id,Request $request){$request->validate([
-'quantity' => 'required|integer|min:1',]);$result = $this->cartService->addProductToCart($product_id,$request->input('quantity'));if(!$result['success']){return ResponseHelper::jsonResponse('',$result['message'],422);}return ResponseHelper::jsonResponse('',$result['message'],200);}public function getCartProducts(){$user = Auth::user();$result = $this->cartService->getAllProductsInCart($user);if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json([
-'data' => $result['products'],'total_price' =>(float)$result['total_price'],]);}public function deleteAll(){$this->cartService->deleteAll();return ResponseHelper::jsonResponse('Cart cleared successfully');}public function deleteProducts(Request $request){$request->validate([
-'product_ids' => 'required|array|min:1','product_ids.*' => 'integer',]);$result = $this->cartService->deleteProducts($request->input('product_ids'));if(!$result['success']){return response()->json(['message' => $result['message']],422);}return response()->json([
-'message' => $result['message'],'deleted_ids' => $result['deleted_ids'],'not_found_ids' => $result['not_found_ids'],]);}public function update(int $productId,Request $request){$request->validate([
-'quantity' => 'required|integer|min:1',]);$result = $this->cartService->updateProductQuantity($productId,$request->input('quantity'));if(!$result['success']){return response()->json(['message' => $result['message']],422);}return ResponseHelper::jsonResponse($result['message']);}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\CategoryController.php =====
-namespace App\Http\Controllers\Api;class CategoryController extends Controller{public function index(){$categories = Category::all();return ResponseHelper::jsonResponse($categories,'Categories retrieved successfully');}public function store(StoreCategoryRequest $request){$category = Category::create($request->validated());return ResponseHelper::jsonResponse($category,'Category created successfully',201);}public function show(Category $category){return ResponseHelper::jsonResponse($category,'Category retrieved successfully');}public function update(UpdateCategoryRequest $request,Category $category){$category->update($request->validated());return ResponseHelper::jsonResponse($category,'Category updated successfully');}public function destroy(Category $category){$category->delete();return ResponseHelper::jsonResponse(null,'Category deleted successfully');}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\DailySalesReportController.php =====
+namespace App\Http\Controllers;class DailySalesReportController extends Controller{public function show(string $date){$report = DailySalesReport::where('date',$date)->first();if(! $report){return response()->json(['message' => 'Report not found for the given date.'],404);}return response()->json([
+'date' => $report->date,'total_orders' => $report->total_orders,'total_revenue' => $report->total_revenue,'pdf_url' => Storage::url($report->pdf_path),]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Controllers\Api\InventoryController.php =====
 namespace App\Http\Controllers\Api;class InventoryController extends Controller{protected $inventoryService;public function __construct(InventoryService $inventoryService){$this->inventoryService = $inventoryService;}public function index(){$result = $this->inventoryService->getAll();if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function show(int $productId){$result = $this->inventoryService->getByProductId($productId);if(isset($result['message'])){return ResponseHelper::jsonResponse($result['message']);}return response()->json(['data' => $result['data']]);}public function update(int $productId,Request $request){$request->validate([
 'quantity' => 'required|integer|min:0',]);$result = $this->inventoryService->updateQuantity($productId,$request->input('quantity'));if(!$result['success']){return ResponseHelper::jsonResponse('',$result['message'],404);}return ResponseHelper::jsonResponse($result['message']);}}
@@ -92,7 +59,7 @@ namespace App\Services;class OrderService{public function __construct(protected 
 'success' => false,'message' => "Cannot transition from{$order->status}to{$status}",];}$updated = $this->orderRepository->updateStatus($order,$status);return ['success' => true,'message' => 'Status updated successfully','data' => $updated];}public function checkout(array $data): array{$createOrderResult = $this->createOrder($data);if(!$createOrderResult['success']){return $createOrderResult;}$order = $createOrderResult['data'];$user = Auth::user();$wallet = $user->wallet;if(!$wallet || !$wallet->is_active){return ['success' => false,'message' => 'Wallet not found or inactive'];}if($wallet->balance < $order->total_amount){return [
 'success' => false,'message' => 'Insufficient wallet balance','data' => [
 'required' => $order->total_amount,'available' => $wallet->balance,'shortage' => $order->total_amount - $wallet->balance,],];}try{$transaction = DB::transaction(function()use($order,$wallet,$user){$balanceBefore = $wallet->balance;$amount = $order->total_amount;$wallet->decrement('balance',$amount);$transaction = Transaction::create([
-'wallet_id' => $wallet->id,'order_id' => $order->id,'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore - $amount,'type' => 'payment','status' => 'completed',]);Order::find($order->id)->update(['payment_status' => 'paid']);return $transaction;});$updatedOrder = $this->getOrderById($order->id);return [
+'wallet_id' => $wallet->id,'order_id' => $order->id,'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore - $amount,'type' => 'payment','status' => 'completed',]);Order::find($order->id)->update(['payment_status' => 'paid']);return $transaction;});$updatedOrder = $this->getOrderById($order->id);GenerateInvoicePdfJob::dispatch($order->id);return [
 'success' => true,'message' => 'Payment completed successfully','data' => [
 'order' => $updatedOrder['data'],'transaction' => $transaction,'wallet_balance' => $wallet->fresh()->balance,],];}catch(Throwable $e){return [
 'success' => false,'message' => 'Payment processing failed: ' . $e->getMessage(),];}}}
@@ -104,6 +71,9 @@ namespace App\Models;class Cart extends Model{use HasFactory;protected $guarded 
 namespace App\Models;class CartItem extends Model{use HasFactory;protected $guarded = [];public function cart(){return $this->belongsTo(Cart::class);}public function product(){return $this->belongsTo(Product::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Category.php =====
 namespace App\Models;class Category extends Model{use HasFactory;protected $guarded = [];public function products(){return $this->hasMany(Product::class);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\DailySalesReport.php =====
+namespace App\Models;class DailySalesReport extends Model{protected $fillable = ['date','total_orders','total_revenue','pdf_path'];protected $casts = [
+'date' => 'date','total_revenue' => 'decimal:2',];}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Inventory.php =====
 namespace App\Models;class Inventory extends Model{use HasFactory;protected $guarded = [];public function product(){return $this->belongsTo(Product::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Order.php =====
@@ -119,6 +89,43 @@ namespace App\Models;class User extends Authenticatable{use HasApiTokens,HasFact
 'email_verified_at' => 'datetime','password' => 'hashed',];}public function cart(){return $this->hasOne(Cart::class);}public function orders(){return $this->hasMany(Order::class);}public function wallet(){return $this->hasOne(Wallet::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Wallet.php =====
 namespace App\Models;class Wallet extends Model{use HasFactory;protected $guarded = [];public function user(){return $this->belongsTo(User::class);}public function transactions(){return $this->hasMany(Transaction::class);}}
+
+// === [Providers] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Providers\AppServiceProvider.php =====
+namespace App\Providers;class AppServiceProvider extends ServiceProvider{public function register(): void{}public function boot(): void{Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);RateLimiter::for('public-api',function(Request $request){return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());});RateLimiter::for('authenticated-api',function(Request $request){return Limit::perMinute(120)->by($request->user()->id);});RateLimiter::for('login',function(Request $request){return Limit::perMinute(5)->by($request->email . $request->ip());});RateLimiter::for('register',function(Request $request){return Limit::perMinute(3)->by($request->ip());});RateLimiter::for('cart',function(Request $request){return Limit::perMinute(60)->by($request->user()->id);});RateLimiter::for('checkout',function(Request $request){return Limit::perMinute(5)->by($request->user()->id);});RateLimiter::for('wallet',function(Request $request){return Limit::perMinute(3)->by($request->user()->id);});RateLimiter::for('inventory-update',function(Request $request){return Limit::perMinute(20)->by($request->user()->id);});RateLimiter::for('admin-actions',function(Request $request){return Limit::perMinute(10)->by($request->user()->id);});}}
+
+// === [Requests] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\CheckoutRequest.php =====
+namespace App\Http\Requests;class CheckoutRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'shipping_address' => 'required|string|max:500',];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
+namespace App\Http\Requests;class LoginRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'email' => ['required','email'],'password' => ['required','string','min:6'],];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\RegisterRequest.php =====
+namespace App\Http\Requests;class RegisterRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => ['required','string','max:255'],'email' => ['required','email','unique:users,email'],'password' => ['required','min:6','confirmed'],];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreCategoryRequest.php =====
+namespace App\Http\Requests;class StoreCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'required|string|max:255|unique:categories,name',];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreProductRequest.php =====
+namespace App\Http\Requests;class StoreProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'required|string|max:255','description' => 'required|string','price' => 'required|numeric|min:0','category_id' => 'required|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\TopUpRequest.php =====
+namespace App\Http\Requests;class TopUpRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'amount' => 'required|numeric|min:1',];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateCategoryRequest.php =====
+namespace App\Http\Requests;class UpdateCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'sometimes|string|max:255|unique:categories,name,' . $this->route('category')->id,];}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateProductRequest.php =====
+namespace App\Http\Requests;class UpdateProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
+'name' => 'sometimes|string|max:255','description' => 'sometimes|string','price' => 'sometimes|numeric|min:0','category_id' => 'sometimes|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+];}}
+
+// === [Helpers] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Helpers\ResponseHelper.php =====
+namespace App\Helpers;class ResponseHelper{public static function jsonResponse($data = null,string $message = '',int $statusCode = 200,bool $successful = true,int $pageCount = null,int $userCount = null): JsonResponse{$responseData = [
+'successful' => $successful,'message' => $message,'data' => $data,'page_count' => $pageCount,'user_count' => $userCount,'status_code' => $statusCode,];if(is_null($data)||(is_array($data)&& empty($data))){unset($responseData['data']);}if(is_null($pageCount)){unset($responseData['page_count']);}if(is_null($userCount)){unset($responseData['user_count']);}return response()->json($responseData,$statusCode);}}
 
 // === [Migrations] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\0001_01_01_000000_create_users_table.php =====
@@ -147,6 +154,8 @@ return new class extends Migration{public function up(): void{Schema::create('wa
 return new class extends Migration{public function up(): void{Schema::create('transactions',function(Blueprint $table){$table->id();$table->foreignIdFor(Wallet::class)->constrained();$table->foreignIdFor(Order::class)->nullable()->constrained()->nullOnDelete();$table->decimal('amount',10,2);$table->decimal('balance_before',10,2);$table->decimal('balance_after',10,2);$table->enum('type',['deposit','withdraw','payment','refund']);$table->enum('status',['pending','completed','failed']);$table->timestamps();});}public function down(): void{Schema::dropIfExists('transactions');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_04_111058_create_personal_access_tokens_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('personal_access_tokens',function(Blueprint $table){$table->id();$table->morphs('tokenable');$table->text('name');$table->string('token',64)->unique();$table->text('abilities')->nullable();$table->timestamp('last_used_at')->nullable();$table->timestamp('expires_at')->nullable()->index();$table->timestamps();});}public function down(): void{Schema::dropIfExists('personal_access_tokens');}};
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_10_121209_create_daily_sales_reports_table.php =====
+return new class extends Migration{public function up(): void{Schema::create('daily_sales_reports',function(Blueprint $table){$table->id();$table->date('date')->unique();$table->integer('total_orders')->default(0);$table->decimal('total_revenue',15,2)->default(0);$table->string('pdf_path')->nullable();$table->timestamps();});}public function down(): void{Schema::dropIfExists('daily_sales_reports');}};
 
 // === [Seeders] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\CartItemSeeder.php =====
@@ -169,7 +178,9 @@ namespace Database\Seeders;class ProductSeeder extends Seeder{public function ru
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\TransactionSeeder.php =====
 namespace Database\Seeders;class TransactionSeeder extends Seeder{public function run(): void{Transaction::factory(20)->create();}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\UserSeeder.php =====
-namespace Database\Seeders;class UserSeeder extends Seeder{public function run(): void{User::factory(10)->create();}}
+namespace Database\Seeders;class UserSeeder extends Seeder{public function run(): void{User::factory(30)->create();User::factory()->create([
+'name' => 'Admin User','email' => 'admin@example.com','role' => 'admin',]);User::factory()->create([
+'name' => 'Normal User','email' => 'user@example.com','role' => 'user',]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\WalletSeeder.php =====
 namespace Database\Seeders;class WalletSeeder extends Seeder{public function run(): void{Wallet::factory(10)->create();}}
 
@@ -200,39 +211,65 @@ namespace Database\Factories;class TransactionFactory extends Factory{public fun
 'wallet_id' => Wallet::factory(),'amount' => $amount,'balance_before' => $balanceBefore,'balance_after' => $balanceBefore + $amount,'type' => fake()->randomElement(['deposit','withdraw','payment','refund']),'status' => fake()->randomElement(['pending','completed','failed']),'order_id' => null,];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\UserFactory.php =====
 namespace Database\Factories;class UserFactory extends Factory{protected static ?string $password;public function definition(): array{return [
-'name' => fake()->name(),'email' => fake()->unique()->safeEmail(),'email_verified_at' => now(),'password' => static::$password ??= Hash::make('password'),'remember_token' => Str::random(10),];}public function unverified(): static{return $this->state(fn(array $attributes)=> [
+'name' => fake()->name(),'email' => fake()->unique()->safeEmail(),'email_verified_at' => now(),'role' => fake()->randomElement(['admin','user']),'password' => static::$password ??= Hash::make('password'),'remember_token' => Str::random(10),];}public function unverified(): static{return $this->state(fn(array $attributes)=> [
 'email_verified_at' => null,]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\WalletFactory.php =====
 namespace Database\Factories;class WalletFactory extends Factory{public function definition(): array{return [
 'user_id' => User::factory(),'balance' => fake()->randomFloat(2,0,10000),'is_active' => true,];}}
 
-// === [Requests] ===
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\CheckoutRequest.php =====
-namespace App\Http\Requests;class CheckoutRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'shipping_address' => 'required|string|max:500',];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
-namespace App\Http\Requests;class LoginRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'email' => ['required','email'],'password' => ['required','string','min:6'],];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\RegisterRequest.php =====
-namespace App\Http\Requests;class RegisterRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => ['required','string','max:255'],'email' => ['required','email','unique:users,email'],'password' => ['required','min:6','confirmed'],];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreCategoryRequest.php =====
-namespace App\Http\Requests;class StoreCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => 'required|string|max:255|unique:categories,name',];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreProductRequest.php =====
-namespace App\Http\Requests;class StoreProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => 'required|string|max:255','description' => 'required|string','price' => 'required|numeric|min:0','category_id' => 'required|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\TopUpRequest.php =====
-namespace App\Http\Requests;class TopUpRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'amount' => 'required|numeric|min:1',];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateCategoryRequest.php =====
-namespace App\Http\Requests;class UpdateCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => 'sometimes|string|max:255|unique:categories,name,' . $this->route('category')->id,];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\UpdateProductRequest.php =====
-namespace App\Http\Requests;class UpdateProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => 'sometimes|string|max:255','description' => 'sometimes|string','price' => 'sometimes|numeric|min:0','category_id' => 'sometimes|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-];}}
+// === [Bootstrap] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->throttleWithRedis();$middleware->alias([
+'role' => \App\Http\Middleware\EnsureUserIsAdmin::class,]);})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});$exceptions->render(function(NotFoundHttpException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Resource not found.',404,false);}});})->create();
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
+return array('barryvdh/laravel-dompdf' => 
+array('aliases' => 
+array('PDF' => 'Barryvdh\\DomPDF\\Facade\\Pdf','Pdf' => 'Barryvdh\\DomPDF\\Facade\\Pdf',),'providers' => 
+array(0 => 'Barryvdh\\DomPDF\\ServiceProvider',),),'laravel/boost' => 
+array('providers' => 
+array(0 => 'Laravel\\Boost\\BoostServiceProvider',),),'laravel/mcp' => 
+array('aliases' => 
+array('Mcp' => 'Laravel\\Mcp\\Server\\Facades\\Mcp',),'providers' => 
+array(0 => 'Laravel\\Mcp\\Server\\McpServiceProvider',),),'laravel/pail' => 
+array('providers' => 
+array(0 => 'Laravel\\Pail\\PailServiceProvider',),),'laravel/pao' => 
+array('providers' => 
+array(0 => 'Laravel\\Pao\\Laravel\\ServiceProvider',),),'laravel/roster' => 
+array('providers' => 
+array(0 => 'Laravel\\Roster\\RosterServiceProvider',),),'laravel/sanctum' => 
+array('providers' => 
+array(0 => 'Laravel\\Sanctum\\SanctumServiceProvider',),),'laravel/tinker' => 
+array('providers' => 
+array(0 => 'Laravel\\Tinker\\TinkerServiceProvider',),),'nesbot/carbon' => 
+array('providers' => 
+array(0 => 'Carbon\\Laravel\\ServiceProvider',),),'nunomaduro/collision' => 
+array('providers' => 
+array(0 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',),),'nunomaduro/termwind' => 
+array('providers' => 
+array(0 => 'Termwind\\Laravel\\TermwindServiceProvider',),),);
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\providers.php =====
+return [
+AppServiceProvider::class,];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\services.php =====
+return array('providers' => 
+array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Broadcasting\\BroadcastServiceProvider',2 => 'Illuminate\\Bus\\BusServiceProvider',3 => 'Illuminate\\Cache\\CacheServiceProvider',4 => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider',5 => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider',6 => 'Illuminate\\Cookie\\CookieServiceProvider',7 => 'Illuminate\\Database\\DatabaseServiceProvider',8 => 'Illuminate\\Encryption\\EncryptionServiceProvider',9 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',10 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',11 => 'Illuminate\\Hashing\\HashServiceProvider',12 => 'Illuminate\\Mail\\MailServiceProvider',13 => 'Illuminate\\Notifications\\NotificationServiceProvider',14 => 'Illuminate\\Pagination\\PaginationServiceProvider',15 => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider',16 => 'Illuminate\\Pipeline\\PipelineServiceProvider',17 => 'Illuminate\\Queue\\QueueServiceProvider',18 => 'Illuminate\\Redis\\RedisServiceProvider',19 => 'Illuminate\\Session\\SessionServiceProvider',20 => 'Illuminate\\Translation\\TranslationServiceProvider',21 => 'Illuminate\\Validation\\ValidationServiceProvider',22 => 'Illuminate\\View\\ViewServiceProvider',23 => 'Barryvdh\\DomPDF\\ServiceProvider',24 => 'Laravel\\Boost\\BoostServiceProvider',25 => 'Laravel\\Mcp\\Server\\McpServiceProvider',26 => 'Laravel\\Pail\\PailServiceProvider',27 => 'Laravel\\Pao\\Laravel\\ServiceProvider',28 => 'Laravel\\Roster\\RosterServiceProvider',29 => 'Laravel\\Sanctum\\SanctumServiceProvider',30 => 'Laravel\\Tinker\\TinkerServiceProvider',31 => 'Carbon\\Laravel\\ServiceProvider',32 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',33 => 'Termwind\\Laravel\\TermwindServiceProvider',34 => 'App\\Providers\\AppServiceProvider',),'eager' => 
+array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Cookie\\CookieServiceProvider',2 => 'Illuminate\\Database\\DatabaseServiceProvider',3 => 'Illuminate\\Encryption\\EncryptionServiceProvider',4 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',5 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',6 => 'Illuminate\\Notifications\\NotificationServiceProvider',7 => 'Illuminate\\Pagination\\PaginationServiceProvider',8 => 'Illuminate\\Session\\SessionServiceProvider',9 => 'Illuminate\\View\\ViewServiceProvider',10 => 'Barryvdh\\DomPDF\\ServiceProvider',11 => 'Laravel\\Boost\\BoostServiceProvider',12 => 'Laravel\\Mcp\\Server\\McpServiceProvider',13 => 'Laravel\\Pail\\PailServiceProvider',14 => 'Laravel\\Pao\\Laravel\\ServiceProvider',15 => 'Laravel\\Roster\\RosterServiceProvider',16 => 'Laravel\\Sanctum\\SanctumServiceProvider',17 => 'Carbon\\Laravel\\ServiceProvider',18 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',19 => 'Termwind\\Laravel\\TermwindServiceProvider',20 => 'App\\Providers\\AppServiceProvider',),'deferred' => 
+array('Illuminate\\Broadcasting\\BroadcastManager' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Factory' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Broadcaster' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\QueueingDispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\BatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\DatabaseBatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','cache' => 'Illuminate\\Cache\\CacheServiceProvider','cache.store' => 'Illuminate\\Cache\\CacheServiceProvider','cache.psr6' => 'Illuminate\\Cache\\CacheServiceProvider','memcached.connector' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Cache\\RateLimiter' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Foundation\\Console\\AboutCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ForgetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClearCompiledCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Auth\\Console\\ClearResetsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DbCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\PruneCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\WipeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DownCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentDecryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentEncryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\Console\\InvokeSerializedClosureCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\KeyGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PackageDiscoverCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\PruneStaleTagsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FlushFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ForgetFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListenCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneBatchesCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneFailedJobsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RestartCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryBatchCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\WorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ReloadCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DumpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleFinishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleRunCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleClearCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleTestCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleWorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleInterruptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\SchedulePauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowModelCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageLinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageUnlinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\UpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ApiInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\BroadcastingInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\CacheTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\CastMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClassMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ComponentMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConsoleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\ControllerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DocsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnumMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ExceptionMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Factories\\FactoryMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\InterfaceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\LangPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ListenerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\MailMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\MiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ModelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\NotificationMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Notifications\\Console\\NotificationTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ObserverMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PolicyMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ProviderMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FailedTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\BatchesTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RequestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ResourceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RuleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ScopeMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeederMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Session\\Console\\SessionTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ServeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StubPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TraitMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\VendorPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.repository' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.creator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Migrations\\Migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\FreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\InstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RefreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\ResetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RollbackCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\StatusCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','composer' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\ConcurrencyManager' => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider','hash' => 'Illuminate\\Hashing\\HashServiceProvider','hash.driver' => 'Illuminate\\Hashing\\HashServiceProvider','mail.manager' => 'Illuminate\\Mail\\MailServiceProvider','mailer' => 'Illuminate\\Mail\\MailServiceProvider','Illuminate\\Mail\\Markdown' => 'Illuminate\\Mail\\MailServiceProvider','auth.password' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','auth.password.broker' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','Illuminate\\Contracts\\Pipeline\\Hub' => 'Illuminate\\Pipeline\\PipelineServiceProvider','pipeline' => 'Illuminate\\Pipeline\\PipelineServiceProvider','queue' => 'Illuminate\\Queue\\QueueServiceProvider','queue.connection' => 'Illuminate\\Queue\\QueueServiceProvider','queue.failer' => 'Illuminate\\Queue\\QueueServiceProvider','queue.listener' => 'Illuminate\\Queue\\QueueServiceProvider','queue.routes' => 'Illuminate\\Queue\\QueueServiceProvider','queue.worker' => 'Illuminate\\Queue\\QueueServiceProvider','redis' => 'Illuminate\\Redis\\RedisServiceProvider','redis.connection' => 'Illuminate\\Redis\\RedisServiceProvider','translator' => 'Illuminate\\Translation\\TranslationServiceProvider','translation.loader' => 'Illuminate\\Translation\\TranslationServiceProvider','validator' => 'Illuminate\\Validation\\ValidationServiceProvider','validation.presence' => 'Illuminate\\Validation\\ValidationServiceProvider','Illuminate\\Contracts\\Validation\\UncompromisedVerifier' => 'Illuminate\\Validation\\ValidationServiceProvider','command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',),'when' => 
+array('Illuminate\\Broadcasting\\BroadcastServiceProvider' => 
+array(),'Illuminate\\Bus\\BusServiceProvider' => 
+array(),'Illuminate\\Cache\\CacheServiceProvider' => 
+array(),'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider' => 
+array(),'Illuminate\\Concurrency\\ConcurrencyServiceProvider' => 
+array(),'Illuminate\\Hashing\\HashServiceProvider' => 
+array(),'Illuminate\\Mail\\MailServiceProvider' => 
+array(),'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider' => 
+array(),'Illuminate\\Pipeline\\PipelineServiceProvider' => 
+array(),'Illuminate\\Queue\\QueueServiceProvider' => 
+array(),'Illuminate\\Redis\\RedisServiceProvider' => 
+array(),'Illuminate\\Translation\\TranslationServiceProvider' => 
+array(),'Illuminate\\Validation\\ValidationServiceProvider' => 
+array(),'Laravel\\Tinker\\TinkerServiceProvider' => 
+array(),),);
 
 // === [Config] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\app.php =====
@@ -282,6 +319,15 @@ return [
 'cluster' => env('REDIS_CLUSTER','redis'),'prefix' => env('REDIS_PREFIX',Str::slug((string)env('APP_NAME','laravel')).'-database-'),'persistent' => env('REDIS_PERSISTENT',false),],'default' => [
 'url' => env('REDIS_URL'),'host' => env('REDIS_HOST','127.0.0.1'),'username' => env('REDIS_USERNAME'),'password' => env('REDIS_PASSWORD'),'port' => env('REDIS_PORT','6379'),'database' => env('REDIS_DB','0'),'max_retries' => env('REDIS_MAX_RETRIES',3),'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM','decorrelated_jitter'),'backoff_base' => env('REDIS_BACKOFF_BASE',100),'backoff_cap' => env('REDIS_BACKOFF_CAP',1000),],'cache' => [
 'url' => env('REDIS_URL'),'host' => env('REDIS_HOST','127.0.0.1'),'username' => env('REDIS_USERNAME'),'password' => env('REDIS_PASSWORD'),'port' => env('REDIS_PORT','6379'),'database' => env('REDIS_CACHE_DB','1'),'max_retries' => env('REDIS_MAX_RETRIES',3),'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM','decorrelated_jitter'),'backoff_base' => env('REDIS_BACKOFF_BASE',100),'backoff_cap' => env('REDIS_BACKOFF_CAP',1000),],],];
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\dompdf.php =====
+return [
+'show_warnings' => false,'public_path' => null,'convert_entities' => true,'options' => [
+'font_dir' => storage_path('fonts'),'font_cache' => storage_path('fonts'),'temp_dir' => sys_get_temp_dir(),'chroot' => realpath(base_path()),'allowed_protocols' => [
+'data:
+'file:
+'http:
+'https:
+],'artifactPathValidation' => null,'log_output_file' => null,'enable_font_subsetting' => false,'pdf_backend' => 'CPDF','default_media_type' => 'screen','default_paper_size' => 'a4','default_paper_orientation' => 'portrait','default_font' => 'serif','dpi' => 96,'enable_php' => false,'enable_javascript' => true,'enable_remote' => false,'allowed_remote_hosts' => null,'font_height_ratio' => 1.1,'enable_html5_parser' => true,],];
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\filesystems.php =====
 return [
 'default' => env('FILESYSTEM_DISK','local'),'disks' => [
@@ -361,63 +407,759 @@ return [
 
 // === [Routes] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\api.php =====
-Route::post('/register',[AuthController::class,'register']);Route::post('/login',[AuthController::class,'login'])->name('login');Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});Route::apiResource('products',ProductController::class)->except(['store','update','destroy']);Route::apiResource('categories',CategoryController::class)->except(['store','update','destroy']);Route::middleware('auth:sanctum')->group(function(){Route::apiResource('products',ProductController::class)->except(['index','show']);Route::apiResource('categories',CategoryController::class)->except(['index','show']);});Route::middleware('auth:sanctum')->prefix('cart')->group(function(){Route::post('/add/{product_id}',[CartController::class,'add']);Route::get('/',[CartController::class,'getCartProducts']);Route::delete('/clear',[CartController::class,'deleteAll']);Route::delete('/remove',[CartController::class,'deleteProducts']);Route::patch('/update/{product_id}',[CartController::class,'update']);});Route::middleware('auth:sanctum')->prefix('inventory')->group(function(){Route::get('/',[InventoryController::class,'index']);Route::get('/{productId}',[InventoryController::class,'show']);Route::put('/{productId}',[InventoryController::class,'update']);});Route::middleware('auth:sanctum')->prefix('orders')->group(function(){Route::get('/',[OrderController::class,'index']);Route::post('/checkout',[OrderController::class,'checkout']);Route::get('/{order}',[OrderController::class,'show']);Route::put('/{id}/status',[OrderController::class,'updateStatus'])->middleware('role:Admin');});Route::middleware('auth:sanctum')->group(function(){Route::get('/wallet',[WalletController::class,'show']);Route::post('/wallet/topup',[WalletController::class,'topUp']);});
+Route::post('/register',[AuthController::class,'register'])->middleware('throttle:register')->name('register');Route::post('/login',[AuthController::class,'login'])->middleware('throttle:login')->name('login');Route::middleware('auth:sanctum')->group(function(){Route::post('/logout',[AuthController::class,'logout']);Route::get('/me',[AuthController::class,'me']);});Route::middleware('throttle:public-api')->group(function(){Route::apiResource('products',ProductController::class)->except(['store','update','destroy']);Route::apiResource('categories',CategoryController::class)->except(['store','update','destroy']);});Route::middleware('auth:sanctum')->group(function(){Route::apiResource('products',ProductController::class)->except(['index','show']);Route::apiResource('categories',CategoryController::class)->except(['index','show']);});Route::middleware(['auth:sanctum','throttle:cart'])->prefix('cart')->group(function(){Route::post('/add/{product_id}',[CartController::class,'add']);Route::get('/',[CartController::class,'getCartProducts']);Route::delete('/clear',[CartController::class,'deleteAll']);Route::delete('/remove',[CartController::class,'deleteProducts']);Route::patch('/update/{product_id}',[CartController::class,'update']);});Route::middleware(['auth:sanctum','throttle:inventory-update'])->prefix('inventory')->group(function(){Route::get('/',[InventoryController::class,'index']);Route::get('/{productId}',[InventoryController::class,'show']);Route::put('/{productId}',[InventoryController::class,'update']);});Route::middleware('auth:sanctum')->prefix('orders')->group(function(){Route::get('/',[OrderController::class,'index'])->middleware('throttle:authenticated-api');Route::post('/checkout',[OrderController::class,'checkout'])->middleware('throttle:checkout');Route::get('/{order}',[OrderController::class,'show'])->middleware('throttle:authenticated-api');Route::put('/{id}/status',[OrderController::class,'updateStatus'])->middleware([
+'role:Admin','throttle:admin-actions',]);});Route::middleware('auth:sanctum')->group(function(){Route::get('/wallet',[WalletController::class,'show'])->middleware('throttle:authenticated-api');Route::post('/wallet/topup',[WalletController::class,'topUp'])->middleware('throttle:wallet');});Route::middleware('auth:sanctum')->group(function(){Route::get('/daily-sales-report/{date}',[DailySalesReportController::class,'show']);});Route::get('/test-checkout',function(){Auth::loginUsingId(1);$service = app(OrderService::class);return $service->checkout([
+'shipping_address' => 'Damascus',]);});
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\console.php =====
 Artisan::command('inspire',function(){$this->comment(Inspiring::quote());})->purpose('Display an inspiring quote');
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\routes\web.php =====
 Route::get('/',function(){return view('welcome');});
 
-// === [Providers] ===
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Providers\AppServiceProvider.php =====
-namespace App\Providers;class AppServiceProvider extends ServiceProvider{public function register(): void{}public function boot(): void{Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);}}
+// === [Tests] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\DailySalesInventoryJobTest.php =====
+namespace Tests\Feature;class DailySalesInventoryJobTest extends TestCase{use RefreshDatabase;public function test_daily_sales_inventory_job_updates_inventory_correctly(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Completed','created_at' => Carbon::yesterday(),]);$orderItem = OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,'unit_price' => 50.00,]);$job = new DailySalesInventoryJob;$job->handle();$inventory->refresh();$this->assertEquals(90,$inventory->quantity);}public function test_job_does_not_update_inventory_for_non_completed_orders(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Processing','created_at' => Carbon::yesterday(),]);OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,]);$job = new DailySalesInventoryJob;$job->handle();$inventory->refresh();$this->assertEquals(100,$inventory->quantity);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\ExampleTest.php =====
+namespace Tests\Feature;class ExampleTest extends TestCase{public function test_the_application_returns_a_successful_response(): void{$response = $this->get('/');$response->assertStatus(200);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Unit\ExampleTest.php =====
+namespace Tests\Unit;class ExampleTest extends TestCase{public function test_that_true_is_true(): void{$this->assertTrue(true);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\Feature\ProcessDailySalesJobTest.php =====
+namespace Tests\Feature;class ProcessDailySalesJobTest extends TestCase{use RefreshDatabase;public function test_process_daily_sales_job_creates_report_and_updates_inventory(): void{$user = User::factory()->create();$product = Product::factory()->create();$inventory = Inventory::factory()->create([
+'product_id' => $product->id,'quantity' => 100,]);$order = Order::factory()->create([
+'user_id' => $user->id,'status' => 'Completed','payment_status' => 'paid','total_amount' => 200.00,'created_at' => Carbon::yesterday(),]);$orderItem = OrderItem::factory()->create([
+'product_id' => $product->id,'order_id' => $order->id,'quantity' => 10,'unit_price' => 20.00,]);$job = new ProcessDailySalesJob;$job->handle();$inventory->refresh();$this->assertEquals(90,$inventory->quantity);$report = DailySalesReport::where('date',Carbon::yesterday()->toDateString())->first();$this->assertNotNull($report);$this->assertEquals(1,$report->total_orders);$this->assertEquals(200.00,$report->total_revenue);$this->assertNotNull($report->pdf_path);}public function test_job_skips_if_report_already_exists(): void{DailySalesReport::create([
+'date' => Carbon::yesterday()->toDateString(),'total_orders' => 0,'total_revenue' => 0.0,'pdf_path' => null,]);$job = new ProcessDailySalesJob;$job->handle();$report = DailySalesReport::where('date',Carbon::yesterday()->toDateString())->first();$this->assertEquals(0,$report->total_orders);}public function test_api_returns_report_data(): void{$report = DailySalesReport::create([
+'date' => '2023-10-01','total_orders' => 5,'total_revenue' => 1000.00,'pdf_path' => 'public/daily-reports/test.pdf',]);$user = User::factory()->create();$this->actingAs($user,'sanctum');$response = $this->getJson('/api/daily-sales-report/2023-10-01');$response->assertStatus(200)->assertJsonFragment([
+'total_orders' => 5,'pdf_url' => '/storage/daily-reports/test.pdf',]);}public function test_api_returns_404_if_report_not_found(): void{$user = User::factory()->create();$this->actingAs($user,'sanctum');$response = $this->getJson('/api/daily-sales-report/2023-10-01');$response->assertStatus(404)->assertJson(['message' => 'Report not found for the given date.']);}}
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\tests\TestCase.php =====
+namespace Tests;abstract class TestCase extends BaseTestCase{}
 
-// === [Bootstrap] ===
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
-return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->alias([
-'role' => \App\Http\Middleware\EnsureUserIsAdmin::class,]);})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});$exceptions->render(function(NotFoundHttpException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Resource not found.',404,false);}});})->create();
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
-return array('laravel/boost' => 
-array('providers' => 
-array(0 => 'Laravel\\Boost\\BoostServiceProvider',),),'laravel/mcp' => 
-array('aliases' => 
-array('Mcp' => 'Laravel\\Mcp\\Server\\Facades\\Mcp',),'providers' => 
-array(0 => 'Laravel\\Mcp\\Server\\McpServiceProvider',),),'laravel/pail' => 
-array('providers' => 
-array(0 => 'Laravel\\Pail\\PailServiceProvider',),),'laravel/pao' => 
-array('providers' => 
-array(0 => 'Laravel\\Pao\\Laravel\\ServiceProvider',),),'laravel/roster' => 
-array('providers' => 
-array(0 => 'Laravel\\Roster\\RosterServiceProvider',),),'laravel/sanctum' => 
-array('providers' => 
-array(0 => 'Laravel\\Sanctum\\SanctumServiceProvider',),),'laravel/tinker' => 
-array('providers' => 
-array(0 => 'Laravel\\Tinker\\TinkerServiceProvider',),),'nesbot/carbon' => 
-array('providers' => 
-array(0 => 'Carbon\\Laravel\\ServiceProvider',),),'nunomaduro/collision' => 
-array('providers' => 
-array(0 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',),),'nunomaduro/termwind' => 
-array('providers' => 
-array(0 => 'Termwind\\Laravel\\TermwindServiceProvider',),),);
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\providers.php =====
-return [
-AppServiceProvider::class,];
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\services.php =====
-return array('providers' => 
-array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Broadcasting\\BroadcastServiceProvider',2 => 'Illuminate\\Bus\\BusServiceProvider',3 => 'Illuminate\\Cache\\CacheServiceProvider',4 => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider',5 => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider',6 => 'Illuminate\\Cookie\\CookieServiceProvider',7 => 'Illuminate\\Database\\DatabaseServiceProvider',8 => 'Illuminate\\Encryption\\EncryptionServiceProvider',9 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',10 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',11 => 'Illuminate\\Hashing\\HashServiceProvider',12 => 'Illuminate\\Mail\\MailServiceProvider',13 => 'Illuminate\\Notifications\\NotificationServiceProvider',14 => 'Illuminate\\Pagination\\PaginationServiceProvider',15 => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider',16 => 'Illuminate\\Pipeline\\PipelineServiceProvider',17 => 'Illuminate\\Queue\\QueueServiceProvider',18 => 'Illuminate\\Redis\\RedisServiceProvider',19 => 'Illuminate\\Session\\SessionServiceProvider',20 => 'Illuminate\\Translation\\TranslationServiceProvider',21 => 'Illuminate\\Validation\\ValidationServiceProvider',22 => 'Illuminate\\View\\ViewServiceProvider',23 => 'Laravel\\Boost\\BoostServiceProvider',24 => 'Laravel\\Mcp\\Server\\McpServiceProvider',25 => 'Laravel\\Pail\\PailServiceProvider',26 => 'Laravel\\Pao\\Laravel\\ServiceProvider',27 => 'Laravel\\Roster\\RosterServiceProvider',28 => 'Laravel\\Sanctum\\SanctumServiceProvider',29 => 'Laravel\\Tinker\\TinkerServiceProvider',30 => 'Carbon\\Laravel\\ServiceProvider',31 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',32 => 'Termwind\\Laravel\\TermwindServiceProvider',33 => 'App\\Providers\\AppServiceProvider',),'eager' => 
-array(0 => 'Illuminate\\Auth\\AuthServiceProvider',1 => 'Illuminate\\Cookie\\CookieServiceProvider',2 => 'Illuminate\\Database\\DatabaseServiceProvider',3 => 'Illuminate\\Encryption\\EncryptionServiceProvider',4 => 'Illuminate\\Filesystem\\FilesystemServiceProvider',5 => 'Illuminate\\Foundation\\Providers\\FoundationServiceProvider',6 => 'Illuminate\\Notifications\\NotificationServiceProvider',7 => 'Illuminate\\Pagination\\PaginationServiceProvider',8 => 'Illuminate\\Session\\SessionServiceProvider',9 => 'Illuminate\\View\\ViewServiceProvider',10 => 'Laravel\\Boost\\BoostServiceProvider',11 => 'Laravel\\Mcp\\Server\\McpServiceProvider',12 => 'Laravel\\Pail\\PailServiceProvider',13 => 'Laravel\\Pao\\Laravel\\ServiceProvider',14 => 'Laravel\\Roster\\RosterServiceProvider',15 => 'Laravel\\Sanctum\\SanctumServiceProvider',16 => 'Carbon\\Laravel\\ServiceProvider',17 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',18 => 'Termwind\\Laravel\\TermwindServiceProvider',19 => 'App\\Providers\\AppServiceProvider',),'deferred' => 
-array('Illuminate\\Broadcasting\\BroadcastManager' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Factory' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Contracts\\Broadcasting\\Broadcaster' => 'Illuminate\\Broadcasting\\BroadcastServiceProvider','Illuminate\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\Dispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Contracts\\Bus\\QueueingDispatcher' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\BatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','Illuminate\\Bus\\DatabaseBatchRepository' => 'Illuminate\\Bus\\BusServiceProvider','cache' => 'Illuminate\\Cache\\CacheServiceProvider','cache.store' => 'Illuminate\\Cache\\CacheServiceProvider','cache.psr6' => 'Illuminate\\Cache\\CacheServiceProvider','memcached.connector' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Cache\\RateLimiter' => 'Illuminate\\Cache\\CacheServiceProvider','Illuminate\\Foundation\\Console\\AboutCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\ForgetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClearCompiledCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Auth\\Console\\ClearResetsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DbCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\PruneCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\WipeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DownCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentDecryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnvironmentEncryptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\Console\\InvokeSerializedClosureCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\KeyGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\OptimizeClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PackageDiscoverCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\PruneStaleTagsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FlushFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ForgetFailedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ListenCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\MonitorCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneBatchesCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\PruneFailedJobsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RestartCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\ResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\RetryBatchCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\WorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ReloadCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RouteListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\DumpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeedCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleFinishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleRunCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleClearCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleTestCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleWorkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleInterruptCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\SchedulePauseCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Console\\Scheduling\\ScheduleResumeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\ShowModelCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageLinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StorageUnlinkCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\UpCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewCacheCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewClearCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ApiInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\BroadcastingInstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Cache\\Console\\CacheTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\CastMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelListCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ChannelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ClassMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ComponentMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConfigPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ConsoleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\ControllerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\DocsCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EnumMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventGenerateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\EventMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ExceptionMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Factories\\FactoryMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\InterfaceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\JobMiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\LangPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ListenerMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\MailMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Routing\\Console\\MiddlewareMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ModelMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\NotificationMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Notifications\\Console\\NotificationTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ObserverMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\PolicyMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ProviderMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\FailedTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\TableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Queue\\Console\\BatchesTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RequestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ResourceMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\RuleMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ScopeMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Seeds\\SeederMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Session\\Console\\SessionTableCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ServeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\StubPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TestMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\TraitMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\VendorPublishCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Foundation\\Console\\ViewMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.repository' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','migration.creator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Migrations\\Migrator' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\FreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\InstallCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RefreshCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\ResetCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\RollbackCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\StatusCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Database\\Console\\Migrations\\MigrateMakeCommand' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','composer' => 'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider','Illuminate\\Concurrency\\ConcurrencyManager' => 'Illuminate\\Concurrency\\ConcurrencyServiceProvider','hash' => 'Illuminate\\Hashing\\HashServiceProvider','hash.driver' => 'Illuminate\\Hashing\\HashServiceProvider','mail.manager' => 'Illuminate\\Mail\\MailServiceProvider','mailer' => 'Illuminate\\Mail\\MailServiceProvider','Illuminate\\Mail\\Markdown' => 'Illuminate\\Mail\\MailServiceProvider','auth.password' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','auth.password.broker' => 'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider','Illuminate\\Contracts\\Pipeline\\Hub' => 'Illuminate\\Pipeline\\PipelineServiceProvider','pipeline' => 'Illuminate\\Pipeline\\PipelineServiceProvider','queue' => 'Illuminate\\Queue\\QueueServiceProvider','queue.connection' => 'Illuminate\\Queue\\QueueServiceProvider','queue.failer' => 'Illuminate\\Queue\\QueueServiceProvider','queue.listener' => 'Illuminate\\Queue\\QueueServiceProvider','queue.routes' => 'Illuminate\\Queue\\QueueServiceProvider','queue.worker' => 'Illuminate\\Queue\\QueueServiceProvider','redis' => 'Illuminate\\Redis\\RedisServiceProvider','redis.connection' => 'Illuminate\\Redis\\RedisServiceProvider','translator' => 'Illuminate\\Translation\\TranslationServiceProvider','translation.loader' => 'Illuminate\\Translation\\TranslationServiceProvider','validator' => 'Illuminate\\Validation\\ValidationServiceProvider','validation.presence' => 'Illuminate\\Validation\\ValidationServiceProvider','Illuminate\\Contracts\\Validation\\UncompromisedVerifier' => 'Illuminate\\Validation\\ValidationServiceProvider','command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',),'when' => 
-array('Illuminate\\Broadcasting\\BroadcastServiceProvider' => 
-array(),'Illuminate\\Bus\\BusServiceProvider' => 
-array(),'Illuminate\\Cache\\CacheServiceProvider' => 
-array(),'Illuminate\\Foundation\\Providers\\ConsoleSupportServiceProvider' => 
-array(),'Illuminate\\Concurrency\\ConcurrencyServiceProvider' => 
-array(),'Illuminate\\Hashing\\HashServiceProvider' => 
-array(),'Illuminate\\Mail\\MailServiceProvider' => 
-array(),'Illuminate\\Auth\\Passwords\\PasswordResetServiceProvider' => 
-array(),'Illuminate\\Pipeline\\PipelineServiceProvider' => 
-array(),'Illuminate\\Queue\\QueueServiceProvider' => 
-array(),'Illuminate\\Redis\\RedisServiceProvider' => 
-array(),'Illuminate\\Translation\\TranslationServiceProvider' => 
-array(),'Illuminate\\Validation\\ValidationServiceProvider' => 
-array(),'Laravel\\Tinker\\TinkerServiceProvider' => 
-array(),),);
+// === [ApiCollections] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Create Category.yml =====
+info:
+  name: Create Category
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/categories"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Create Product.yml =====
+info:
+  name: Create Product
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: iPhone 15
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1200"
+      - name: category_id
+        type: text
+        value: "5"
+      - name: image
+        type: file
+        value:
+          - postman-cloud:///1efdca67-1582-4a60-90f8-ffdc53b327d3
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Delete Category.yml =====
+info:
+  name: Delete Category
+  type: http
+  seq: 5
+http:
+  method: DELETE
+  url: "{{base_url}}/categories/1"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Delete Product.yml =====
+info:
+  name: Delete Product
+  type: http
+  seq: 5
+http:
+  method: DELETE
+  url: "{{base_url}}/products/1"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Get Categories.yml =====
+info:
+  name: Get Categories
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/categories"
+  body:
+    type: multipart-form
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Get Category.yml =====
+info:
+  name: Get Category
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/categories/5"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Get Product.yml =====
+info:
+  name: Get Product
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/products/2"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Get Products.yml =====
+info:
+  name: Get Products
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/products"
+  body:
+    type: multipart-form
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Login.yml =====
+info:
+  name: Login
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/login"
+  headers:
+    - name: Contant-Type
+      value: application/json
+      disabled: true
+  body:
+    type: multipart-form
+    data:
+      - name: email
+        type: text
+        value: test@example.com
+      - name: password
+        type: text
+        value: "123456"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        test("Successful POST request", function () {
+            expect(res.getStatus()).to.be.oneOf([200, 201]);
+        });
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+docs: |-
+  This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.
+  A successful POST request typically returns a `200 OK` or `201 Created` response code.
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Logout.yml =====
+info:
+  name: Logout
+  type: http
+  seq: 4
+http:
+  method: POST
+  url: "{{base_url}}/logout"
+  auth:
+    type: bearer
+    token: qJhYEpmWe76jVmVTEv0ieClXFdYA7A8xiLzYtoR9273dceee
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Me.yml =====
+info:
+  name: Me
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/me"
+  auth:
+    type: bearer
+    token: qJhYEpmWe76jVmVTEv0ieClXFdYA7A8xiLzYtoR9273dceee
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\Register.yml =====
+info:
+  name: Register
+  type: http
+  seq: 1
+http:
+  method: POST
+  url: "{{base_url}}/register"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: Test User
+      - name: email
+        type: text
+        value: test@example.com
+      - name: password
+        type: text
+        value: "123456"
+      - name: password_confirmation
+        type: text
+        value: "123456"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        test("Status code is 200", function () {
+            expect(res.getStatus()).to.equal(200);
+        });
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+docs: |-
+  This is a GET request and it is used to "get" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).
+  A successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data.
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Report Daily\Report.yml =====
+info:
+  name: Report
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/daily-sales-report/2026-05-09"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Update Category.yml =====
+info:
+  name: Update Category
+  type: http
+  seq: 2
+http:
+  method: PUT
+  url: "{{base_url}}/categories/1"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\Update Product.yml =====
+info:
+  name: Update Product
+  type: http
+  seq: 2
+http:
+  method: PUT
+  url: "{{base_url}}/products/6"
+  body:
+    type: multipart-form
+    data:
+      - name: name
+        type: text
+        value: phones-alaa
+      - name: description
+        type: text
+        value: Apple smartphone
+      - name: price
+        type: text
+        value: "1000"
+      - name: category_id
+        type: text
+        value: "9"
+      - name: image
+        type: file
+        value: []
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\add to cart.yml =====
+info:
+  name: add to cart
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/cart/add/21"
+  body:
+    type: multipart-form
+    data:
+      - name: quantity
+        type: text
+        value: "3"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\environments\base_url.yml =====
+name: base_url
+variables:
+  - name: base_url
+    value: http://127.0.0.1:8000/api
+  - name: token
+    value: 1|7b7bBX0fn2Semgobgt8ynoLz8NAn7JSgT1Az0G8c426d150c
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\check wallet.yml =====
+info:
+  name: check wallet
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/wallet"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\checkout.yml =====
+info:
+  name: checkout
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/orders/checkout"
+  body:
+    type: multipart-form
+    data:
+      - name: shipping_address
+        type: text
+        value: Damascus
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\clear cart.yml =====
+info:
+  name: clear cart
+  type: http
+  seq: 3
+http:
+  method: DELETE
+  url: "{{base_url}}/cart/clear"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Auth\folder.yml =====
+info:
+  name: Auth
+  type: folder
+  seq: 1
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\folder.yml =====
+info:
+  name: Cart
+  type: folder
+  seq: 4
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\folder.yml =====
+info:
+  name: Category
+  type: folder
+  seq: 2
+request:
+  auth:
+    type: bearer
+    token: ""
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\folder.yml =====
+info:
+  name: Order
+  type: folder
+  seq: 6
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Product\folder.yml =====
+info:
+  name: Product
+  type: folder
+  seq: 3
+request:
+  auth:
+    type: bearer
+    token: ""
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Report Daily\folder.yml =====
+info:
+  name: Report Daily
+  type: folder
+  seq: 8
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\folder.yml =====
+info:
+  name: Wallet
+  type: folder
+  seq: 7
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\folder.yml =====
+info:
+  name: inventory
+  type: folder
+  seq: 5
+request:
+  auth: inherit
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\get all.yml =====
+info:
+  name: get all
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: "{{base_url}}/orders"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\get all.yml =====
+info:
+  name: get all
+  type: http
+  seq: 3
+http:
+  method: GET
+  url: "{{base_url}}/inventory"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\get products.yml =====
+info:
+  name: get products
+  type: http
+  seq: 1
+http:
+  method: GET
+  url: ""
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\get quantity of product.yml =====
+info:
+  name: get quantity of product
+  type: http
+  seq: 2
+http:
+  method: GET
+  url: ""
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\opencollection.yml =====
+opencollection: 1.0.0
+info:
+  name: E-Commerce-Backend-Engine
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+request:
+  headers:
+    - name: Accept
+      value: application/json
+  auth:
+    type: bearer
+    token: 1|ehtskzvTpD5GpJ3Ro5tsu5UxRc1SBoFAy8t88Td3e0c10d48
+  variables:
+    - name: id
+      value: "1"
+    - name: base_url
+      value: ""
+docs:
+  content: |-
+    This template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.
+    RESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.
+    This collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click "Send" to see what happens.
+    Observe the response tab for status code (200 OK), response time, and size.
+    Update or add new data in "Body" in the POST request. Typically, Body data is also used in PUT request.
+    ```
+    {
+        "name": "Add your name in the body"
+    }
+     ```
+    Variables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.
+    Adding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the "Test Results" tab.
+    <img src="https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n" alt="" height="1530" width="2162">
+    - Use folders to group related requests and organize the collection.
+    - Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.
+    [API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  
+    [API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  
+    [Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\remove products.yml =====
+info:
+  name: remove products
+  type: http
+  seq: 4
+http:
+  method: DELETE
+  url: "{{base_url}}/cart/remove"
+  params:
+    - name: ""
+      value: ""
+      type: query
+  body:
+    type: json
+    data: |-
+      {
+        "product_ids":[3]
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\show.yml =====
+info:
+  name: show
+  type: http
+  seq: 4
+http:
+  method: GET
+  url: "{{base_url}}/orders/31"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Wallet\topup.yml =====
+info:
+  name: topup
+  type: http
+  seq: 2
+http:
+  method: POST
+  url: "{{base_url}}/wallet/topup"
+  body:
+    type: multipart-form
+    data:
+      - name: amount
+        type: text
+        value: "9000000.05"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Cart\update quantity.yml =====
+info:
+  name: update quantity
+  type: http
+  seq: 5
+http:
+  method: PATCH
+  url: "{{base_url}}/cart/update/3"
+  body:
+    type: multipart-form
+    data:
+      - name: quantity
+        type: text
+        value: "3"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\inventory\update quantity.yml =====
+info:
+  name: update quantity
+  type: http
+  seq: 1
+http:
+  method: PUT
+  url: "{{base_url}}/inventory/1"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Order\update status.yml =====
+info:
+  name: update status
+  type: http
+  seq: 3
+http:
+  method: PUT
+  url: "{{base_url}}/orders/31/status"
+  body:
+    type: multipart-form
+    data:
+      - name: status
+        type: text
+        value: Processing
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
