@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\WalletController;
 use Illuminate\Support\Facades\Route;
+use Barryvdh\DomPDF\Facade\Pdf;
+
+
 
 ////////////   Auth   /////////////////////
 
@@ -61,8 +64,70 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::put('/{id}/status',     [OrderController::class, 'updateStatus'])->middleware('role:Admin');
 });
 
+
 ////////   wallet   //////////////////
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet', [WalletController::class, 'show']);
     Route::post('/wallet/topup', [WalletController::class, 'topUp']);
+});
+
+
+////////   Testing Manar   //////////////////
+
+// Route::get('/test-job', function () {
+//     dispatch(new TestBackgroundJob());
+
+//     return response()->json([
+//         'message' => 'Job dispatched successfully'
+//     ]);
+// });
+
+// Route::get('/test-pdf/{orderId}', function ($orderId) {
+
+//     $order = Order::with([
+//         'user',
+//         'orderItems.product'
+//     ])->findOrFail($orderId);
+
+//     $invoiceData = [
+//         'invoice_number' => 'INV-' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
+
+//         'purchase_date' => $order->created_at->format('Y-m-d'),
+
+//         'customer_name' => $order->user->name,
+
+//         'shipping_address' => $order->shipping_address,
+
+//         'payment_status' => $order->payment_status,
+
+//         'order_status' => $order->status,
+
+//         'total_amount' => $order->total_amount,
+
+//         'items' => $order->orderItems->map(function ($item) {
+
+//     return [
+//         'name' => $item->product->name,
+//         'quantity' => $item->quantity,
+//         'unit_price' => $item->unit_price,
+//         'subtotal' => $item->quantity * $item->unit_price,
+//     ];
+// })->toArray(),
+//     ];
+
+//     $pdf = Pdf::loadView('pdf.invoice', $invoiceData);
+
+//     return $pdf->download('invoice.pdf');
+// });
+
+use Illuminate\Support\Facades\Auth;
+Route::get('/test-checkout', function () {
+
+    Auth::loginUsingId(1);
+
+    $service = app(App\Services\OrderService::class);
+
+    return $service->checkout([
+        'shipping_address' => 'Damascus'
+    ]);
 });
