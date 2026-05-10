@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\GenerateInvoicePdfJob;
 use Throwable;
 
 class OrderService
@@ -159,6 +160,7 @@ class OrderService
 
             // Reload order with updated payment status
             $updatedOrder = $this->getOrderById($order->id);
+            GenerateInvoicePdfJob::dispatch($order->id);
 
             return [
                 'success' => true,
