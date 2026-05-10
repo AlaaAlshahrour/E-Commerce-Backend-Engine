@@ -219,7 +219,7 @@ namespace Database\Factories;class WalletFactory extends Factory{public function
 
 // === [Bootstrap] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\app.php =====
-return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->alias([
+return Application::configure(basePath: dirname(__DIR__))->withRouting(web: __DIR__.'/../routes/web.php',api: __DIR__.'/../routes/api.php',commands: __DIR__.'/../routes/console.php',health: '/up',)->withMiddleware(function(Middleware $middleware): void{$middleware->throttleWithRedis();$middleware->alias([
 'role' => \App\Http\Middleware\EnsureUserIsAdmin::class,]);})->withExceptions(function(Exceptions $exceptions): void{$exceptions->render(function(AuthenticationException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Unauthenticated.',401,false);}});$exceptions->render(function(NotFoundHttpException $e,Request $request){if($request->is('api/*')){return ResponseHelper::jsonResponse(null,'Resource not found.',404,false);}});})->create();
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\bootstrap\cache\packages.php =====
 return array('barryvdh/laravel-dompdf' => 
