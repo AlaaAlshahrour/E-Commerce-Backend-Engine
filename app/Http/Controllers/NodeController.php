@@ -3,35 +3,50 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class NodeController extends Controller
 {
     private array $nodes = [
-        'Node-1' => 'app-node-1',
-        'Node-2' => 'app-node-2',
-        'Node-3' => 'app-node-3',
+        'Node-1' => [
+            'fpm' => 'app-node-1',
+            'web' => 'app-node-1-web',
+        ],
+        'Node-2' => [
+            'fpm' => 'app-node-2',
+            'web' => 'app-node-2-web',
+        ],
+        'Node-3' => [
+            'fpm' => 'app-node-3',
+            'web' => 'app-node-3-web',
+        ],
     ];
 
     public function status(): JsonResponse
     {
         $result = [];
 
-        foreach ($this->nodes as $nodeName => $container) {
+        foreach ($this->nodes as $nodeName => $containers) {
+            $webRunning = trim(shell_exec(
+                    "docker inspect -f '{{.State.Running}}' {$containers['web']} 2>/dev/null"
+                )) === 'true';
 
-            $status = trim(shell_exec(
-                "docker inspect -f '{{.State.Running}}' {$container} 2>/dev/null"
-            ));
+            $fpmRunning = trim(shell_exec(
+                    "docker inspect -f '{{.State.Running}}' {$containers['fpm']} 2>/dev/null"
+                )) === 'true';
 
             $result[$nodeName] = [
-                'container' => $container,
-                'running' => $status === 'true',
+                'running'       => $webRunning && $fpmRunning,
+                'web_running'   => $webRunning,
+                'fpm_running'   => $fpmRunning,
+                'web_container' => $containers['web'],
+                'fpm_container' => $containers['fpm'],
             ];
         }
 
         return response()->json([
             'successful' => true,
-            'nodes' => $result,
+            'node'       => env('NODE_NAME', gethostname()),
+            'nodes'      => $result,
         ]);
     }
 
@@ -40,17 +55,18 @@ class NodeController extends Controller
         if (!isset($this->nodes[$node])) {
             return response()->json([
                 'successful' => false,
-                'message' => 'Invalid node',
+                'message'    => 'Node not found',
             ], 404);
         }
 
-        $container = $this->nodes[$node];
-
-        shell_exec("docker stop {$container}");
+        // أوقف الـ web أولاً — هذا ما يرى NGINX
+        shell_exec("docker stop {$this->nodes[$node]['web']} 2>/dev/null");
+        shell_exec("docker stop {$this->nodes[$node]['fpm']} 2>/dev/null");
 
         return response()->json([
             'successful' => true,
-            'message' => "{$node} stopped successfully",
+            'message'    => "{$node} stopped",
+            'node'       => env('NODE_NAME', gethostname()),
         ]);
     }
 
@@ -59,29 +75,40 @@ class NodeController extends Controller
         if (!isset($this->nodes[$node])) {
             return response()->json([
                 'successful' => false,
-                'message' => 'Invalid node',
+                'message'    => 'Node not found',
             ], 404);
         }
 
-        $container = $this->nodes[$node];
-
-        shell_exec("docker start {$container}");
+        // شغّل الـ FPM أولاً ثم الـ web
+        shell_exec("docker start {$this->nodes[$node]['fpm']} 2>/dev/null");
+        sleep(2);
+        shell_exec("docker start {$this->nodes[$node]['web']} 2>/dev/null");
 
         return response()->json([
             'successful' => true,
-            'message' => "{$node} started successfully",
+            'message'    => "{$node} started",
+            'node'       => env('NODE_NAME', gethostname()),
         ]);
     }
 
     public function restoreAll(): JsonResponse
     {
-        foreach ($this->nodes as $container) {
-            shell_exec("docker start {$container}");
+        // شغّل كل الـ FPM أولاً
+        foreach ($this->nodes as $containers) {
+            shell_exec("docker start {$containers['fpm']} 2>/dev/null");
+        }
+
+        sleep(2);
+
+        // ثم كل الـ web
+        foreach ($this->nodes as $containers) {
+            shell_exec("docker start {$containers['web']} 2>/dev/null");
         }
 
         return response()->json([
             'successful' => true,
-            'message' => 'All nodes restored',
+            'message'    => 'All nodes restored',
+            'node'       => env('NODE_NAME', gethostname()),
         ]);
     }
 }
