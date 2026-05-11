@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 
@@ -34,14 +34,14 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('authenticated-api', function (Request $request) {
 
-        return Limit::perMinute(120)
-            ->by($request->user()->id);
+            return Limit::perMinute(120)
+                ->by($request->user()->id);
         });
 
         RateLimiter::for('login', function (Request $request) {
 
             return Limit::perMinute(5)
-                ->by($request->email . $request->ip());
+                ->by($request->email.$request->ip());
         });
 
         RateLimiter::for('register', function (Request $request) {

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
-    protected $inventoryService;
+    protected InventoryService $inventoryService;
 
     public function __construct(InventoryService $inventoryService)
     {
@@ -46,7 +46,7 @@ class InventoryController extends Controller
 
         $result = $this->inventoryService->updateQuantity($productId, $request->input('quantity'));
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return ResponseHelper::jsonResponse('', $result['message'], 404);
         }
 

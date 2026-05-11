@@ -15,7 +15,6 @@ class CartRepository
         return Cart::create(['user_id' => $userId]);
     }
 
-
     public function getProduct(int $productId)
     {
         return Product::with('inventory')->find($productId);
@@ -24,9 +23,9 @@ class CartRepository
     public function addProductToCart(Cart $cart, int $productId, int $quantity): void
     {
         DB::table('cart_items')->insert([
-            'cart_id'    => $cart->id,
+            'cart_id' => $cart->id,
             'product_id' => $productId,
-            'quantity'   => $quantity,
+            'quantity' => $quantity,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -45,8 +44,8 @@ class CartRepository
             ])
             ->get()
             ->map(function ($cartItem) use (&$total_price) {
-                $product        = $cartItem->product;
-                $order_amount   = $cartItem->quantity;
+                $product = $cartItem->product;
+                $order_amount = $cartItem->quantity;
                 $availableStock = optional($product->inventory)->quantity ?? 0;
 
                 $message = $availableStock == 0
@@ -60,21 +59,21 @@ class CartRepository
                 }
 
                 return [
-                    'product_id'     => $product->id,
-                    'product_name'   => $product->name,
-                    'description'    => $product->description,
-                    'price'          => $product->price,
-                    'photo_url'      => $product->photo_url,
-                    'category_id'    => $product->category_id,
-                    'category_name'  => $product->category->name,
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->price,
+                    'photo_url' => $product->photo_url,
+                    'category_id' => $product->category_id,
+                    'category_name' => $product->category->name,
                     'order_quantity' => $order_amount,
-                    'stock'          => $availableStock,
-                    'message'        => $message,
+                    'stock' => $availableStock,
+                    'message' => $message,
                 ];
             });
 
         return [
-            'products'    => $mappedProducts,
+            'products' => $mappedProducts,
             'total_price' => $total_price,
         ];
     }
@@ -85,10 +84,12 @@ class CartRepository
             $user->cart->cartItems()->delete();
         });
     }
+
     public function deleteProducts(Cart $cart, array $productIds): void
     {
         $cart->cartItems()->whereIn('product_id', $productIds)->delete();
     }
+
     public function updateProductQuantity(Cart $cart, int $productId, int $quantity): bool
     {
         return $cart->cartItems()

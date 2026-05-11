@@ -25,7 +25,7 @@ class CartController extends Controller
 
         $result = $this->cartService->addProductToCart($product_id, $request->input('quantity'));
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return ResponseHelper::jsonResponse('', $result['message'], 422);
         }
 
@@ -42,7 +42,7 @@ class CartController extends Controller
         }
 
         return response()->json([
-            'data'        => $result['products'],
+            'data' => $result['products'],
             'total_price' => (float) $result['total_price'],
         ]);
     }
@@ -50,27 +50,30 @@ class CartController extends Controller
     public function deleteAll()
     {
         $this->cartService->deleteAll();
+
         return ResponseHelper::jsonResponse('Cart cleared successfully');
     }
+
     public function deleteProducts(Request $request)
     {
         $request->validate([
-            'product_ids'   => 'required|array|min:1',
+            'product_ids' => 'required|array|min:1',
             'product_ids.*' => 'integer',
         ]);
 
         $result = $this->cartService->deleteProducts($request->input('product_ids'));
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['message' => $result['message']], 422);
         }
 
         return response()->json([
-            'message'       => $result['message'],
-            'deleted_ids'   => $result['deleted_ids'],
+            'message' => $result['message'],
+            'deleted_ids' => $result['deleted_ids'],
             'not_found_ids' => $result['not_found_ids'],
         ]);
     }
+
     public function update(int $productId, Request $request)
     {
         $request->validate([
@@ -82,7 +85,7 @@ class CartController extends Controller
             $request->input('quantity')
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['message' => $result['message']], 422);
         }
 

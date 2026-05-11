@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateInvoicePdfJob;
 use App\Models\Order;
 use App\Models\Transaction;
 use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Jobs\GenerateInvoicePdfJob;
 use Throwable;
 
 class OrderService
@@ -29,7 +29,7 @@ class OrderService
     {
         $order = $this->orderRepository->getOrderById($orderId, Auth::id());
 
-        if (!$order) {
+        if (! $order) {
             return ['success' => false, 'message' => 'Order not found'];
         }
 
@@ -41,7 +41,7 @@ class OrderService
         $user = Auth::user();
         $cart = $user->cart;
 
-        if (!$cart) {
+        if (! $cart) {
             return ['success' => false, 'message' => 'Cart is empty'];
         }
 
@@ -53,18 +53,18 @@ class OrderService
 
         // تحقق من توفر المخزون لكل المنتجات
         $unavailable = $cartItems->filter(
-            fn($item) => ($item->product->inventory?->quantity ?? 0) < $item->quantity
+            fn ($item) => ($item->product->inventory?->quantity ?? 0) < $item->quantity
         );
 
         if ($unavailable->isNotEmpty()) {
             return [
                 'success' => false,
                 'message' => 'Some products are out of stock',
-                'data'    => $unavailable->map(fn($item) => [
-                    'product_id'   => $item->product_id,
+                'data' => $unavailable->map(fn ($item) => [
+                    'product_id' => $item->product_id,
                     'product_name' => $item->product->name,
-                    'requested'    => $item->quantity,
-                    'available'    => $item->product->inventory?->quantity ?? 0,
+                    'requested' => $item->quantity,
+                    'available' => $item->product->inventory?->quantity ?? 0,
                 ]),
             ];
         }
@@ -78,18 +78,18 @@ class OrderService
     {
         $order = $this->orderRepository->getOrderById($orderId, Auth::id());
 
-        if (!$order) {
+        if (! $order) {
             return ['success' => false, 'message' => 'Order not found'];
         }
 
         $allowedTransitions = [
-            'pending'    => ['Processing', 'Canceled'],
+            'pending' => ['Processing', 'Canceled'],
             'Processing' => ['Completed', 'Canceled'],
-            'Completed'  => [],
-            'Canceled'   => [],
+            'Completed' => [],
+            'Canceled' => [],
         ];
 
-        if (!in_array($status, $allowedTransitions[$order->status] ?? [])) {
+        if (! in_array($status, $allowedTransitions[$order->status] ?? [])) {
             return [
                 'success' => false,
                 'message' => "Cannot transition from {$order->status} to {$status}",
@@ -106,7 +106,7 @@ class OrderService
         // Create order
         $createOrderResult = $this->createOrder($data);
 
-        if (!$createOrderResult['success']) {
+        if (! $createOrderResult['success']) {
             return $createOrderResult;
         }
 
@@ -115,7 +115,7 @@ class OrderService
         $wallet = $user->wallet;
 
         // Check if wallet exists and is active
-        if (!$wallet || !$wallet->is_active) {
+        if (! $wallet || ! $wallet->is_active) {
             return ['success' => false, 'message' => 'Wallet not found or inactive'];
         }
 
@@ -134,7 +134,7 @@ class OrderService
 
         // Process payment via transaction
         try {
-            $transaction = DB::transaction(function () use ($order, $wallet, $user) {
+            $transaction = DB::transaction(function () use ($order, $wallet) {
                 $balanceBefore = $wallet->balance;
                 $amount = $order->total_amount;
 
@@ -174,9 +174,8 @@ class OrderService
         } catch (Throwable $e) {
             return [
                 'success' => false,
-                'message' => 'Payment processing failed: ' . $e->getMessage(),
+                'message' => 'Payment processing failed: '.$e->getMessage(),
             ];
         }
     }
-
 }

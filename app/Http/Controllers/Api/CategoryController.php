@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
@@ -17,6 +16,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = Category::all();
+
         return ResponseHelper::jsonResponse($categories, 'Categories retrieved successfully');
     }
 
@@ -26,6 +26,7 @@ class CategoryController extends Controller
     public function store(StoreCategoryRequest $request)
     {
         $category = Category::create($request->validated());
+
         return ResponseHelper::jsonResponse($category, 'Category created successfully', 201);
     }
 
@@ -43,6 +44,7 @@ class CategoryController extends Controller
     public function update(UpdateCategoryRequest $request, Category $category)
     {
         $category->update($request->validated());
+
         return ResponseHelper::jsonResponse($category, 'Category updated successfully');
     }
 
@@ -52,6 +54,7 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $category->delete();
+
         return ResponseHelper::jsonResponse(null, 'Category deleted successfully');
     }
 }

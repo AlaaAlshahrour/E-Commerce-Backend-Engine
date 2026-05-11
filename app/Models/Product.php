@@ -22,6 +22,7 @@ class Product extends Model
     {
         return $this->hasOne(Inventory::class);
     }
+
     public function getPhotoUrlAttribute($value)
     {
         return asset($value);

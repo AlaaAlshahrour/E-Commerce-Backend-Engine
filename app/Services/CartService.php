@@ -22,10 +22,10 @@ class CartService
 
         $product = $this->cartRepository->getProduct($product_id);
 
-        \Log::info('inventory: ' . json_encode($product->inventory));
-        \Log::info('quantity: ' . $product->inventory?->quantity);
-        \Log::info('requested: ' . $quantity);
-        if (!$product) {
+        \Log::info('inventory: '.json_encode($product->inventory));
+        \Log::info('quantity: '.$product->inventory?->quantity);
+        \Log::info('requested: '.$quantity);
+        if (! $product) {
             return ['success' => false, 'message' => 'Product not found'];
         }
 
@@ -53,7 +53,7 @@ class CartService
     {
         $cart = $user->cart;
 
-        if (!$cart) {
+        if (! $cart) {
             return ['message' => 'Cart is empty'];
         }
 
@@ -77,7 +77,7 @@ class CartService
         $user = Auth::user();
         $cart = $user->cart;
 
-        if (!$cart) {
+        if (! $cart) {
             return ['success' => false, 'message' => 'Cart is empty'];
         }
 
@@ -88,7 +88,7 @@ class CartService
 
         $notFoundIds = array_values(array_diff($productIds, $existingIds));
 
-        if (!empty($existingIds)) {
+        if (! empty($existingIds)) {
             $this->cartRepository->deleteProducts($cart, $existingIds);
         }
 
@@ -105,13 +105,13 @@ class CartService
         $user = Auth::user();
         $cart = $user->cart;
 
-        if (!$cart) {
+        if (! $cart) {
             return ['success' => false, 'message' => 'Cart is empty'];
         }
 
         $cartItem = $cart->cartItems()->where('product_id', $productId)->first();
 
-        if (!$cartItem) {
+        if (! $cartItem) {
             return ['success' => false, 'message' => 'Product not found in cart'];
         }
 

@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\Inventory;
-use App\Models\Product;
 
 class InventoryRepository
 {
@@ -14,11 +13,11 @@ class InventoryRepository
             ->get()
             ->map(function ($inventory) {
                 return [
-                    'product_id'   => $inventory->product->id,
+                    'product_id' => $inventory->product->id,
                     'product_name' => $inventory->product->name,
-                    'price'        => $inventory->product->price,
-                    'photo_url'    => $inventory->product->photo_url,
-                    'quantity'     => $inventory->quantity,
+                    'price' => $inventory->product->price,
+                    'photo_url' => $inventory->product->photo_url,
+                    'quantity' => $inventory->quantity,
                 ];
             });
     }

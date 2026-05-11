@@ -17,7 +17,7 @@ class WalletController extends Controller
     {
         $wallet = $request->user()->wallet;
 
-        if (!$wallet) {
+        if (! $wallet) {
             return ResponseHelper::jsonResponse([], 'Wallet not found', 404);
         }
 
@@ -28,7 +28,7 @@ class WalletController extends Controller
 
         return ResponseHelper::jsonResponse([
             'balance' => $wallet->balance,
-            'transactions' => $transactions
+            'transactions' => $transactions,
         ]);
     }
 
@@ -40,7 +40,7 @@ class WalletController extends Controller
         $user = $request->user();
         $wallet = $user->wallet;
 
-        if (!$wallet) {
+        if (! $wallet) {
             $wallet = Wallet::create([
                 'user_id' => $user->id,
                 'balance' => 0,
@@ -48,7 +48,7 @@ class WalletController extends Controller
             ]);
         }
 
-        if (!$wallet || !$wallet->is_active) {
+        if (! $wallet || ! $wallet->is_active) {
             return ResponseHelper::jsonResponse([], 'Wallet not found or inactive', 422);
         }
 

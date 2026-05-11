@@ -58,8 +58,9 @@ class ProductController extends Controller
         $product = Product::create($data);
         Inventory::create([
             'product_id' => $product->id,
-            'quantity'   => 0,
+            'quantity' => 0,
         ]);
+
         return ResponseHelper::jsonResponse($product, 'Product created successfully', 201);
     }
 

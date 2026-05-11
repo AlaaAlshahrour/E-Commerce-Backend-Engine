@@ -15,20 +15,18 @@ class OrderController extends Controller
     {
         $result = $this->orderService->getUserOrders();
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return ResponseHelper::jsonResponse($result['message'], '', 404);
         }
 
         return response()->json(['data' => $result['data']]);
     }
 
-
-
     public function show(int $id)
     {
         $result = $this->orderService->getOrderById($id);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return ResponseHelper::jsonResponse($result['message'], '', 404);
         }
 
@@ -43,13 +41,13 @@ class OrderController extends Controller
 
         $result = $this->orderService->updateStatus($id, $request->input('status'));
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['message' => $result['message']], 422);
         }
 
         return response()->json([
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ]);
     }
 
@@ -63,16 +61,16 @@ class OrderController extends Controller
             'shipping_address',
         ]));
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json([
                 'message' => $result['message'],
-                'data'    => $result['data'] ?? [],
+                'data' => $result['data'] ?? [],
             ], 422);
         }
 
         return response()->json([
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ], 201);
     }
 }

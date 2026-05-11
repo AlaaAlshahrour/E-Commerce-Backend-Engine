@@ -28,18 +28,18 @@ class InventoryService
     {
         $inventory = $this->inventoryRepository->getByProductId($productId);
 
-        if (!$inventory) {
+        if (! $inventory) {
             return ['message' => 'Product not found in inventory'];
         }
 
         return [
             'data' => [
-                'product_id'   => $inventory->product->id,
+                'product_id' => $inventory->product->id,
                 'product_name' => $inventory->product->name,
-                'price'        => $inventory->product->price,
-                'photo_url'    => $inventory->product->photo_url,
-                'quantity'     => $inventory->quantity,
-            ]
+                'price' => $inventory->product->price,
+                'photo_url' => $inventory->product->photo_url,
+                'quantity' => $inventory->quantity,
+            ],
         ];
     }
 
@@ -47,7 +47,7 @@ class InventoryService
     {
         $inventory = $this->inventoryRepository->getByProductId($productId);
 
-        if (!$inventory) {
+        if (! $inventory) {
             return ['success' => false, 'message' => 'Product not found in inventory'];
         }
 
