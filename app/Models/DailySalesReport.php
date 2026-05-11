@@ -6,10 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class DailySalesReport extends Model
 {
-    protected $fillable = ['date', 'total_orders', 'total_revenue', 'pdf_path'];
+    protected $fillable = [
+        'date',
+        'total_orders',
+        'total_revenue',
+        'pdf_path',
+        'export_start_time',
+        'export_end_time',
+    ];
 
     protected $casts = [
         'date' => 'date',
+        'export_start_time' => 'datetime',
+        'export_end_time' => 'datetime',
         'total_revenue' => 'decimal:2',
     ];
 }

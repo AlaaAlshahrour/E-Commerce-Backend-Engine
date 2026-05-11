@@ -17,6 +17,8 @@ return new class extends Migration
             $table->integer('total_orders')->default(0);
             $table->decimal('total_revenue', 15, 2)->default(0);
             $table->string('pdf_path')->nullable();
+            $table->dateTime('export_start_time')->nullable();
+            $table->dateTime('export_end_time')->nullable();
             $table->timestamps();
         });
     }
