@@ -13,13 +13,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\GenerateInvoicePdfJob;
 use Throwable;
 
 class OrderService
 {
-    public function __construct(protected OrderRepository $orderRepository, protected CartRepository $cartRepository)
-    {
-    }
+    public function __construct(protected OrderRepository $orderRepository) {}
 
     public function getUserOrders(): array
     {

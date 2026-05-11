@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
+        //! Aydi was here to put the throttle with redis middleware
+        $middleware->throttleWithRedis();
+
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
