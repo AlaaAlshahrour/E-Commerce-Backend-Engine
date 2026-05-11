@@ -7,6 +7,8 @@ use App\Models\User;
 /**
  * @extends Factory<Order>
  */
+
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class OrderFactory extends Factory
@@ -18,12 +20,22 @@ class OrderFactory extends Factory
      */
     public function definition(): array
     {
+        $date = Carbon::now()->subDays(rand(0, 1));
+
         return [
             'user_id' => User::factory(),
-            'status' => fake()->randomElement(['Processing', 'Canceled', 'Completed', 'pending']),
-            'total_amount' => fake()->randomFloat(2, 50, 2000),
-            'shipping_address' => fake()->address(),
-            'payment_status' => fake()->randomElement(['pending', 'paid', 'failed', 'refunded']),
+            'status' => 'Completed',
+            'payment_status' => 'paid',
+
+            'total_amount' => fake()->randomFloat(2, 50, 1000),
+
+            'created_at' => $date->copy()->setTime(
+                rand(0, 23),
+                rand(0, 59),
+                rand(0, 59)
+            ),
+            'shipping_address' => $this->faker->address(),
+            'updated_at' => now(),
         ];
     }
 }

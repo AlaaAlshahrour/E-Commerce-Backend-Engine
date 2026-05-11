@@ -22,7 +22,7 @@ class TransactionFactory extends Factory
         $balanceBefore = fake()->randomFloat(2, 1000, 5000);
 
         return [
-            'wallet_id' => Wallet::factory(),
+            'wallet_id' => Wallet::inRandomOrder()->first()->id ?? Wallet::factory(),
             'amount' => $amount,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceBefore + $amount,

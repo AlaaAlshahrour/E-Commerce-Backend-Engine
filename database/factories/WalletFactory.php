@@ -19,7 +19,7 @@ class WalletFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory(),
+            'user_id' => $this->faker->randomElement(User::pluck('id')->toArray()) ?? User::factory(),
             'balance' => fake()->randomFloat(2, 0, 10000),
             'is_active' => true,
         ];

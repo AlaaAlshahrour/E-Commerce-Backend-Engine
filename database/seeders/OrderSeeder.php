@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Order;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class OrderSeeder extends Seeder
 {
@@ -12,6 +12,25 @@ class OrderSeeder extends Seeder
      */
     public function run(): void
     {
-        Order::factory(10)->create();
+        $rows = [];
+
+        for ($i = 0; $i < 50000; $i++) {
+
+            $rows[] = [
+                'user_id' => rand(1, 1000),
+                'status' => 'Completed',
+                'total_amount' => rand(50, 500),
+                'shipping_address' => 'Damascus',
+                'created_at' => now()->subDays(rand(0, 2)),
+                'updated_at' => now(),
+            ];
+
+            if (count($rows) >= 5000) {
+                DB::table('orders')->insert($rows);
+                $rows = [];
+            }
+        }
+
+        DB::table('orders')->insert($rows);
     }
 }
