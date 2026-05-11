@@ -11,6 +11,7 @@ use App\Http\Controllers\DailySalesReportController;
 use App\Services\OrderService;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Controllers\NodeController;
 use Illuminate\Support\Facades\Route;
 
 // //////////   Auth   /////////////////////
@@ -143,4 +144,26 @@ Route::get('/test-checkout', function () {
     return $service->checkout([
         'shipping_address' => 'Damascus',
     ]);
+});
+
+Route::get('/node-info', function () {
+    return response()->json([
+        'hostname' => gethostname(),
+        'server_id' => env('SERVER_ID', 'unknown'),
+        'server_ip' => request()->server('SERVER_ADDR'),
+        'timestamp' => now()->toISOString(),
+        'php_version' => PHP_VERSION,
+    ]);
+});
+
+
+Route::prefix('nodes')->group(function () {
+
+    Route::get('/status', [NodeController::class, 'status']);
+
+    Route::post('/{node}/stop', [NodeController::class, 'stop']);
+
+    Route::post('/{node}/start', [NodeController::class, 'start']);
+
+    Route::post('/restore-all', [NodeController::class, 'restoreAll']);
 });

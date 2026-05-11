@@ -11,16 +11,14 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $orderService)
-    {
-    }
+    public function __construct(protected OrderService $orderService) {}
 
     public function index()
     {
         $result = $this->orderService->getUserOrders();
 
         if (!$result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '', 404);
+            return ResponseHelper::jsonResponse($result['message'], '');
         }
 
         return response()->json(['data' => $result['data']]);
@@ -65,28 +63,10 @@ class OrderController extends Controller
             : $this->orderService->checkoutUnsafe($data);
 
         if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message'],
-                'data' => $result['data'] ?? [],
-            ], 422);
+            $message = isset($result['message']) ? $result['message'] : 'An error occurred';
+            return ResponseHelper::jsonResponse(null, $message, 422);
         }
 
-        return response()->json([
-            'message' => $result['message'],
-            'data' => $result['data'],
-        ], 201);
+        return ResponseHelper::jsonResponse($result['data'], $result['message'], 201);
     }
-
-
-    public function checkoutUnsafe(Request $request)
-    {
-        return response()->json(
-            $this->orderService->checkoutUnsafe(
-                $request->only('shipping_address')
-            )
-        );
-    }
-
-
-
 }
