@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Inventory;
 use App\Repositories\InventoryRepository;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class InventoryService
 {
@@ -43,10 +46,11 @@ class InventoryService
         ];
     }
 
-    public function updateQuantity(int $productId, int $quantity): array
+    public function updateQuantityUnsafe(int $productId, int $quantity): array
     {
-        $inventory = $this->inventoryRepository->getByProductId($productId);
 
+        $inventory = $this->inventoryRepository->getByProductId($productId);
+        sleep(1);
         if (!$inventory) {
             return ['success' => false, 'message' => 'Product not found in inventory'];
         }
@@ -54,5 +58,35 @@ class InventoryService
         $this->inventoryRepository->updateQuantity($productId, $quantity);
 
         return ['success' => true, 'message' => 'Inventory updated successfully'];
+    }
+    public function updateQuantitySafe(int $productId, int $quantity): array
+    {
+
+        return DB::transaction(function () use ($productId, $quantity) {
+
+            $inventory = Inventory::where('product_id', $productId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$inventory) {
+                return ['success' => false, 'message' => 'Product not found'];
+            }
+
+            $secondsSinceLastUpdate = now()->diffInSeconds($inventory->updated_at);
+            $pendingPurchases = (int) Cache::get("product:active_purchases:{$productId}", 0);
+
+            if ($secondsSinceLastUpdate < 5 || $pendingPurchases >0) {
+                return [
+                    'success' => false,
+                    'message' => 'Inventory was just modified or has a recent purchase. Retry in a moment to avoid overwriting it.',
+
+                ];
+            }
+
+
+            $inventory->update(['quantity' => $quantity]);
+
+            return ['success' => true, 'message' => 'Inventory updated successfully'];
+        });
     }
 }

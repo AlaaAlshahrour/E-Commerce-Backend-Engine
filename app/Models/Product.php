@@ -12,7 +12,7 @@ class Product extends Model
     use HasFactory;
 
     protected $guarded = [];
-
+    protected $with = ['inventory'];
     public function category()
     {
         return $this->belongsTo(Category::class);

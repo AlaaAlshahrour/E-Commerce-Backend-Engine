@@ -43,13 +43,27 @@ Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
     Route::get('/',                   [CartController::class, 'getCartProducts']);
     Route::delete('/clear',           [CartController::class, 'deleteAll']);
     Route::delete('/remove',         [CartController::class, 'deleteProducts']);
+    Route::post('/update/unsafe/{product_id}', [
+        CartController::class,
+        'updateUnsafe'
+    ]);
+
+    Route::post('/update/safe/{product_id}', [
+        CartController::class,
+        'updateSafe'
+    ]);
+
     Route::post('/update/{product_id}',     [CartController::class, 'update']);
+
+
 });
 
 ////////   inventory   //////////////////
 Route::middleware('auth:sanctum')->prefix('inventory')->group(function () {
     Route::get('/',                [InventoryController::class, 'index']);
     Route::get('/{productId}',     [InventoryController::class, 'show']);
+    Route::put('/unsafe/{productId}',     [InventoryController::class, 'updateUnsafe']);
+    Route::put('/safe/{productId}',       [InventoryController::class, 'updateSafe']);
     Route::put('/{productId}',     [InventoryController::class, 'update']);
 });
 
@@ -59,6 +73,17 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::post('/checkout',               [OrderController::class, 'checkout']); // Create order + Process payment
     Route::get('/{order}',         [OrderController::class, 'show']);
     Route::put('/{id}/status',     [OrderController::class, 'updateStatus'])->middleware('role:Admin');
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/checkout/unsafe', [OrderController::class, 'checkoutUnsafe']);
+
+    Route::post('/checkout/double-checkout', [OrderController::class, 'checkoutDoubleCheckout']);
+
+    Route::post('/checkout/deadlock', [OrderController::class, 'checkoutDeadLock']);
+
+    Route::post('/checkout/safe', [OrderController::class, 'checkoutSafe']);
 });
 
 ////////   wallet   //////////////////

@@ -2,12 +2,15 @@
 
 namespace App\Repositories;
 
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\CartItem;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Database\Eloquent\Collection;
+
 class OrderRepository
 {
     public function getUserOrders(int $userId)
@@ -30,62 +33,87 @@ class OrderRepository
     }
 
 
-    public function createOrder(int $userId, array $data, Collection $cartItems): Order
+    public function createOrderUnsafe(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems): Order
     {
-        return DB::transaction(function () use ($userId, $data, $cartItems) {
-            $totalAmount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
 
-            $order = Order::create([
-                'user_id'          => $userId,
-                'status'           => 'pending',
-                'total_amount'     => $totalAmount,
-                'shipping_address' => $data['shipping_address'],
-                'payment_status'   => 'pending',
-            ]);
+        /** @var Order $order */
+        $order = $user->orders()->create([
+            'status' => 'pending',
+            'total_amount' => $totalAmount,
+            'shipping_address' => $data['shipping_address'],
+            'payment_status' => 'pending',
+        ]);
 
-            $orderItems = $cartItems->map(fn($item) => [
-                'order_id'   => $order->id,
-                'product_id' => $item->product_id,
-                'quantity'   => $item->quantity,
-                'unit_price' => $item->product->price,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->toArray();
+        $orderItems = $cartItems->map(fn($item) => [
+            'product_id' => $item->product_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->product->price,
+        ])->toArray();
 
-            OrderItem::insert($orderItems);
+        $order->orderItems()->createMany($orderItems);
 
-            foreach ($cartItems as $item) {
-                $item->product->inventory()->decrement('quantity', $item->quantity);
-            }
+        foreach ($cartItems as $item) {
+            $item->product->inventory()->decrement('quantity', $item->quantity);
+        }
 
-            CartItem::where('cart_id', $cartItems->first()->cart_id)->delete();
+        $cart->cartItems()->delete();
 
-            return $order->load('orderItems.product:id,name,photo_url');
-        });
+        return $order->load('orderItems.product:id,name,photo_url');
+
     }
+    public function createOrderSafe(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems, Collection $lockedInventories): Order
+    {
 
+        /** @var Order $order */
+        $order = $user->orders()->create([
+            'status' => 'pending',
+            'total_amount' => $totalAmount,
+            'shipping_address' => $data['shipping_address'],
+            'payment_status' => 'pending',
+        ]);
+
+        $orderItems = $cartItems->map(fn($item) => [
+            'product_id' => $item->product_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->product->price,
+        ])->toArray();
+
+        $order->orderItems()->createMany($orderItems);
+
+        foreach ($cartItems as $item) {
+            $inventory = $lockedInventories->get($item->product_id);
+            $inventory->quantity -= $item->quantity;
+            $inventory->save();
+        }
+
+        $cart->cartItems()->delete();
+
+        return $order->load('orderItems.product:id,name,photo_url');
+
+    }
     public function updateStatus(Order $order, string $status): Order
     {
-        $order->update(['status' => $status]);
+        $order->status =  $status;
+        $order->save();
         return $order->fresh();
     }
 
     private function formatOrder(Order $order): array
     {
         return [
-            'order_id'         => $order->id,
-            'status'           => $order->status,
-            'total_amount'     => (float) $order->total_amount,
+            'order_id' => $order->id,
+            'status' => $order->status,
+            'total_amount' => (float)$order->total_amount,
             'shipping_address' => $order->shipping_address,
-            'payment_status'   => $order->payment_status,
-            'created_at'       => $order->created_at,
-            'items'            => $order->orderItems->map(fn($item) => [
-                'product_id'   => $item->product_id,
+            'payment_status' => $order->payment_status,
+            'created_at' => $order->created_at,
+            'items' => $order->orderItems->map(fn($item) => [
+                'product_id' => $item->product_id,
                 'product_name' => $item->product->name,
-                'photo_url'    => $item->product->photo_url,
-                'quantity'     => $item->quantity,
-                'unit_price'   => (float) $item->unit_price,
-                'subtotal'     => (float) $item->quantity * $item->unit_price,
+                'photo_url' => $item->product->photo_url,
+                'quantity' => $item->quantity,
+                'unit_price' => (float)$item->unit_price,
+                'subtotal' => (float)$item->quantity * $item->unit_price,
             ]),
         ];
     }

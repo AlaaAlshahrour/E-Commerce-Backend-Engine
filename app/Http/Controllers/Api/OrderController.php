@@ -59,7 +59,7 @@ class OrderController extends Controller
             'shipping_address' => 'required|string|min:5',
         ]);
 
-        $result = $this->orderService->checkout($request->only([
+        $result = $this->orderService->checkoutSafe($request->only([
             'shipping_address',
         ]));
 
@@ -74,5 +74,37 @@ class OrderController extends Controller
             'message' => $result['message'],
             'data'    => $result['data'],
         ], 201);
+    }
+
+
+
+
+    public function checkoutUnsafe(Request $request)
+    {
+        return response()->json(
+            $this->orderService->checkoutUnsafe(
+                $request->only('shipping_address')
+            )
+        );
+    }
+
+    public function checkoutDoubleCheckout(Request $request)
+    {
+        return response()->json(
+            $this->orderService->checkoutDoubleCheckoutCanHappen(
+                $request->only('shipping_address')
+            )
+        );
+    }
+
+
+
+    public function checkoutSafe(Request $request)
+    {
+        return response()->json(
+            $this->orderService->checkoutSafe(
+                $request->only('shipping_address')
+            )
+        );
     }
 }
