@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CheckoutRequest;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $orderService) {}
+    public function __construct(protected OrderService $orderService)
+    {
+    }
 
     public function index()
     {
@@ -21,7 +25,6 @@ class OrderController extends Controller
 
         return response()->json(['data' => $result['data']]);
     }
-
 
 
     public function show(int $id)
@@ -49,34 +52,30 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ]);
     }
 
-    public function checkout(Request $request)
+    public function checkout(CheckoutRequest $request)
     {
-        $request->validate([
-            'shipping_address' => 'required|string|min:5',
-        ]);
+        $data = $request->validated();
+        $safe = $request->query('safe') == "1";
 
-        $result = $this->orderService->checkoutSafe($request->only([
-            'shipping_address',
-        ]));
+        $result = $safe ? $this->orderService->checkoutSafe($data)
+            : $this->orderService->checkoutUnsafe($data);
 
         if (!$result['success']) {
             return response()->json([
                 'message' => $result['message'],
-                'data'    => $result['data'] ?? [],
+                'data' => $result['data'] ?? [],
             ], 422);
         }
 
         return response()->json([
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ], 201);
     }
-
-
 
 
     public function checkoutUnsafe(Request $request)
@@ -88,23 +87,6 @@ class OrderController extends Controller
         );
     }
 
-    public function checkoutDoubleCheckout(Request $request)
-    {
-        return response()->json(
-            $this->orderService->checkoutDoubleCheckoutCanHappen(
-                $request->only('shipping_address')
-            )
-        );
-    }
 
 
-
-    public function checkoutSafe(Request $request)
-    {
-        return response()->json(
-            $this->orderService->checkoutSafe(
-                $request->only('shipping_address')
-            )
-        );
-    }
 }

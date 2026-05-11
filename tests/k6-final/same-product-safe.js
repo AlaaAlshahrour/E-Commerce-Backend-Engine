@@ -17,7 +17,7 @@ import http from 'k6/http';
  *
  *  SEEDER:   php artisan db:seed --class=SameProductSeeder
  *            (sets product 101 quantity = 1)
- *  ENDPOINT: POST /api/checkout/safe
+ *  ENDPOINT: POST /api/orders/checkout/safe
  *
  *  Run: k6 run same-product-safe.js
  * ═══════════════════════════════════════════════════════════════════
@@ -78,7 +78,7 @@ export default function (data) {
     console.log(`═════════════════════════════════════════════════`);
 
     const res = http.post(
-        `${BASE_URL}/api/checkout/safe`,
+        `${BASE_URL}/api/orders/checkout?safe=1`,
         JSON.stringify({ shipping_address: 'Damascus' }),
         {
             headers: {

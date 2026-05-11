@@ -33,7 +33,7 @@ import http from 'k6/http';
  *
  *  SEEDER:        php artisan db:seed --class=AdminInventoryRaceSeeder
  *  ENDPOINTS:
- *    Buyer  → POST /api/checkout/safe
+ *    Buyer  → POST /api/orders/checkout/safe
  *    Admin  → PUT  /api/inventory/{productId}
  *             (controller calls updateQuantityUnsafe or updateQuantitySafe)
  *
@@ -112,7 +112,7 @@ export default function (data) {
 
 function runBuyer(data) {
     const res = http.post(
-        `${BASE_URL}/api/checkout/safe`,
+        `${BASE_URL}/api/orders/checkout/safe`,
         JSON.stringify({ shipping_address: 'Damascus' }),
         {
             headers: {
@@ -143,7 +143,7 @@ function runAdmin(data) {
     // NOTE: both use PUT /api/inventory/{id} — switch the controller method
     //       or add a separate route for the safe version during testing
     const res = http.put(
-        `${BASE_URL}/api/inventory/unsafe/${PRODUCT_ID}`,
+        `${BASE_URL}/api/inventory/${PRODUCT_ID}?safe=0`,
         JSON.stringify({ quantity: ADMIN_NEW_QTY }),
         {
             headers: {

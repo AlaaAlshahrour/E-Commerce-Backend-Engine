@@ -11,29 +11,7 @@ import http from 'k6/http';
  *    inserting — but both requests read FALSE simultaneously, both
  *    pass the check, and both try to INSERT.
  *
- *  THE RACE (step by step):
- *    Request 1 │ SELECT exists() → false  ┐ both read at the same time
- *    Request 2 │ SELECT exists() → false  ┘
- *    Request 1 │ INSERT cart_items (cart_id=20, product_id=201) → OK ✓
- *    Request 2 │ INSERT cart_items (cart_id=20, product_id=201)
- *              │   → SQLSTATE[23000] Duplicate entry (unique constraint)
- *              │   → Unhandled QueryException → HTTP 500 💥
- *
- *  UNSAFE OUTCOME (before fix):
- *    Request 1 → 200  { message: "Product added to cart" }
- *    Request 2 → 500  Unhandled server error (no clean message)
- *    The DB constraint saved the data integrity, but the user on
- *    device 2 sees a crash instead of a helpful error.
- *
- *  SAFE OUTCOME (after fix):
- *    Request 1 → 200  { message: "Product added to cart" }
- *    Request 2 → 422  { message: "Product already in cart" }
- *    Fix = catch QueryException with error code 23000 in the service
- *    and return a clean error response instead of letting it bubble up.
- *
  *  SEEDER:   php artisan db:seed --class=AddToCartSeeder
- *  RESET:    DELETE FROM cart_items WHERE product_id = 201;
- *  ENDPOINT: POST /api/cart/add/{product_id}  →  product_id = 201
  *
  *  Run: k6 run add-to-cart.js
  * ═══════════════════════════════════════════════════════════════════
@@ -43,7 +21,7 @@ export const options = {
     scenarios: {
         add_to_cart_race: {
             executor: 'shared-iterations',
-            vus: 1,        // 1 VU — http.batch() fires both requests in parallel
+            vus: 1,
             iterations: 1,
             maxDuration: '30s',
         },
@@ -54,7 +32,7 @@ const BASE_URL   = 'http://localhost';
 const PRODUCT_ID = 201;
 const QUANTITY   = 1;
 
-// ── Login once before VUs start ──────────────────────────────────────
+//  Login
 export function setup() {
     const res = http.post(
         `${BASE_URL}/api/login`,
@@ -69,7 +47,7 @@ export function setup() {
     return { token: body.data.token };
 }
 
-// ── Fire both add-to-cart requests at the same instant ───────────────
+// ── Fire add-to-cart requests───────────────
 export default function (data) {
     const req = {
         method: 'POST',
@@ -118,21 +96,7 @@ export default function (data) {
 
     console.log('\n═══════════════════════════════════════════════════════');
 
-    if ((r1ok && r2crash) || (r2ok && r1crash)) {
-        // One succeeded, other crashed with unhandled exception
-        const crashReq = r1crash ? 1 : 2;
-        console.log('  ❌ UNSAFE BEHAVIOUR — Unhandled Duplicate Key Exception');
-        console.log(`     One request succeeded (product added to cart).`);
-        console.log(`     Request ${crashReq} hit the DB unique constraint but the app`);
-        console.log(`     did not catch the QueryException → HTTP 500 returned.`);
-        console.log(`     The user on that device sees a server crash, not a`);
-        console.log(`     meaningful error. Data integrity is preserved by the DB`);
-        console.log(`     constraint, but the user experience is broken.`);
-        console.log(`\n  FIX: Catch QueryException (SQLSTATE 23000) in`);
-        console.log(`       addProductToCart() and return:`);
-        console.log(`       ['success' => false, 'message' => 'Product already in cart']`);
-
-    } else if ((r1ok && r2clean) || (r2ok && r1clean)) {
+     if ((r1ok && r2clean) || (r2ok && r1clean)) {
         // One succeeded, other got a clean 422
         const winner = r1ok ? 1 : 2;
         console.log('  ✅ SAFE BEHAVIOUR — Duplicate Handled Gracefully');

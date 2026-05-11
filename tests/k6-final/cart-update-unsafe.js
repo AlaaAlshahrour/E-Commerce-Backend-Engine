@@ -98,13 +98,13 @@ export default function (data) {
     const [res1, res2] = http.batch([
         {
             method: 'POST',
-            url:    `${BASE_URL}/api/cart/update/unsafe/${PRODUCT_ID}`,
+            url:    `${BASE_URL}/api/cart/update/${PRODUCT_ID}?safe=0`,
             body:   JSON.stringify({ quantity: qty1 }),
             params: { headers },
         },
         {
             method: 'POST',
-            url:    `${BASE_URL}/api/cart/update/unsafe/${PRODUCT_ID}`,
+            url:    `${BASE_URL}/api/cart/update/unsafe/${PRODUCT_ID}?safe=0`,
             body:   JSON.stringify({ quantity: qty2 }),
             params: { headers },
         },

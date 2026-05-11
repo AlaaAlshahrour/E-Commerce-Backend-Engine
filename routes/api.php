@@ -22,7 +22,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 });
-
+Route::get('/test', function () {
+    return response()->json([
+        'working' => true
+    ]);
+});
 // //////   Product & Category   //////////////////
 
 Route::middleware('throttle:public-api')->group(function () {
@@ -62,7 +66,7 @@ Route::middleware(['auth:sanctum', 'throttle:inventory-update'])->prefix('invent
 // //////   orders   //////////////////
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::get('/', [OrderController::class, 'index'])->middleware('throttle:authenticated-api');
-    Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('throttle:checkout');
+    Route::post('/checkout', [OrderController::class, 'checkout']);//->middleware('throttle:checkout');
     Route::get('/{order}', [OrderController::class, 'show'])->middleware('throttle:authenticated-api');
     Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->middleware([
         'role:Admin',

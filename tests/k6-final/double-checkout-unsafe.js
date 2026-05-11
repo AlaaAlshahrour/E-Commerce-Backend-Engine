@@ -17,7 +17,7 @@ import http from 'k6/http';
  *    ❌ UNSAFE — both return SUCCESS (double order, double charge)
  *
  *  SEEDER:   php artisan db:seed --class=DoubleCheckoutSeeder
- *  ENDPOINT: POST /api/checkout/double-checkout
+ *  ENDPOINT: POST /api/orders/checkout/double-checkout
  *
  *  Run: k6 run double-checkout-safe.js
  * ═══════════════════════════════════════════════════════════════════
@@ -57,7 +57,7 @@ export function setup() {
 export default function (data) {
     const req = {
         method: 'POST',
-        url:    `${BASE_URL}/api/checkout/unsafe`,
+        url:    `${BASE_URL}/api/orders/checkout?safe=0`,
         body:   JSON.stringify({ shipping_address: 'Damascus' }),
         params: {
             headers: {

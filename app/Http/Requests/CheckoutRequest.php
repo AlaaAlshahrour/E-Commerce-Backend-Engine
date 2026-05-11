@@ -23,7 +23,8 @@ class CheckoutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'shipping_address' => 'required|string|max:500',
+            'shipping_address' => 'required|string|min:5|max:500',
+            'safe'=>'sometimes',
         ];
     }
 }

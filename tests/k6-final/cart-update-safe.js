@@ -9,16 +9,6 @@ import http from 'k6/http';
  *    Same race as cart-update-unsafe.js but against the protected
  *    endpoint. The safe endpoint uses two layers of protection:
  *
- *    Layer 1 — Cache::lock (distributed mutex):
- *      Only one request can hold the lock per cart+product at a time.
- *      The second request immediately gets "Quantity updated From
- *      Another Device" without even reaching the DB.
- *
- *    Layer 2 — Optimistic lock (updated_at check):
- *      Even if the cache lock somehow allows both through, the DB
- *      update uses a WHERE clause that checks updated_at matches what
- *      was read. If it changed, the update affects 0 rows and the
- *      request is rejected.
  *
  *  HOW TO READ THE RESULTS:
  *    ✅ SAFE — exactly one request succeeds, the other is rejected.
@@ -28,8 +18,6 @@ import http from 'k6/http';
  *
  *  SEEDER:   php artisan db:seed --class=CartRaceSeeder
  *            (sets initial cart item quantity = 5, stock = 50)
- *  ENDPOINT: POST /api/cart/update/safe/{product_id}
- *            product_id = 1
  *
  *  Run: k6 run cart-update-safe.js
  * ═══════════════════════════════════════════════════════════════════
@@ -47,7 +35,7 @@ export const options = {
 };
 
 const BASE_URL    = 'http://localhost';
-const PRODUCT_ID  = 1;   // must match CartRaceSeeder
+const PRODUCT_ID  = 1;   // matches CartRaceSeeder
 
 export function setup() {
     const res = http.post(
@@ -98,13 +86,13 @@ export default function (data) {
     const [res1, res2] = http.batch([
         {
             method: 'POST',
-            url:    `${BASE_URL}/api/cart/update/safe/${PRODUCT_ID}`,
+            url:    `${BASE_URL}/api/cart/update/${PRODUCT_ID}?safe=1`,
             body:   JSON.stringify({ quantity: qty1 }),
             params: { headers },
         },
         {
             method: 'POST',
-            url:    `${BASE_URL}/api/cart/update/safe/${PRODUCT_ID}`,
+            url:    `${BASE_URL}/api/cart/update/${PRODUCT_ID}?safe=1`,
             body:   JSON.stringify({ quantity: qty2 }),
             params: { headers },
         },
