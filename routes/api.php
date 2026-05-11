@@ -9,8 +9,8 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\DailySalesReportController;
 use App\Services\OrderService;
-use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 // //////////   Auth   /////////////////////

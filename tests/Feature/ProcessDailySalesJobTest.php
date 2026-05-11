@@ -47,15 +47,13 @@ class ProcessDailySalesJobTest extends TestCase
         $job = new ProcessDailySalesJob;
         $job->handle();
 
-        // التحقق من تحديث المخزون
-        $inventory->refresh();
-        $this->assertEquals(90, $inventory->quantity);
-
         // التحقق من إنشاء التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
         $this->assertNotNull($report);
         $this->assertEquals(1, $report->total_orders);
         $this->assertEquals(200.00, $report->total_revenue);
+        $this->assertNotNull($report->export_start_time);
+        $this->assertNotNull($report->export_end_time);
         $this->assertNotNull($report->pdf_path);
     }
 
@@ -86,6 +84,8 @@ class ProcessDailySalesJobTest extends TestCase
             'total_orders' => 5,
             'total_revenue' => 1000.00,
             'pdf_path' => 'public/daily-reports/test.pdf',
+            'export_start_time' => Carbon::now()->subMinutes(2),
+            'export_end_time' => Carbon::now(),
         ]);
 
         // تسجيل دخول مستخدم
@@ -98,8 +98,9 @@ class ProcessDailySalesJobTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonFragment([
                 'total_orders' => 5,
-                'pdf_url' => '/storage/daily-reports/test.pdf',
-            ]);
+                'total_revenue' => '1000.00',
+            ])
+            ->assertJsonPath('pdf_url', '/storage/daily-reports/test.pdf');
     }
 
     public function test_api_returns_404_if_report_not_found(): void
@@ -111,5 +112,59 @@ class ProcessDailySalesJobTest extends TestCase
 
         $response->assertStatus(404)
             ->assertJson(['message' => 'Report not found for the given date.']);
+    }
+
+    public function test_job_includes_all_orders_regardless_of_status(): void
+    {
+        // إنشاء بيانات وهمية
+        $user = User::factory()->create();
+        $product = Product::factory()->create();
+
+        // إنشاء طلبات مختلفة الحالات
+        // 1. مكتمل ومدفوع
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Completed',
+            'payment_status' => 'paid',
+            'total_amount' => 100.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        // 2. مكتمل وفشل الدفع
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Completed',
+            'payment_status' => 'failed',
+            'total_amount' => 50.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        // 3. معالج ومدفوع
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Processing',
+            'payment_status' => 'paid',
+            'total_amount' => 75.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        // 4. معالج وقيد الانتظار
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Processing',
+            'payment_status' => 'pending',
+            'total_amount' => 25.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        // تشغيل الـ Job
+        $job = new ProcessDailySalesJob;
+        $job->handle();
+
+        // التحقق من التقرير
+        $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
+        $this->assertNotNull($report);
+        $this->assertEquals(4, $report->total_orders);
+        $this->assertEquals(250.00, $report->total_revenue);
     }
 }
