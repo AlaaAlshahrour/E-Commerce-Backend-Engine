@@ -22,14 +22,16 @@ class GenerateFullProjectCompact extends Command
 
         $sections = [
             'Controllers' => app_path('Http/Controllers'),
-//            'ApiControllers' => app_path('Http/Controllers/Api'),
+            //            'ApiControllers' => app_path('Http/Controllers/Api'),
             'Services' => app_path('Services'),
             'Models' => app_path('Models'),
-            'Enums' => app_path('Enums'),
+            //            'Enums' => app_path('Enums'),
             'Providers' => app_path('Providers'),
-            'Resources' => app_path('Http/Resources'),
+            //            'Resources' => app_path('Http/Resources'),
             'Requests' => app_path('Http/Requests'),
             'Helpers' => app_path('Helpers'),
+            'Middleware' => app_path('Http/Middleware'),
+            'Jobs' => app_path('Jobs'),
             'Migrations' => database_path('migrations'),
             'Seeders' => database_path('seeders'),
             'Factories' => database_path('factories'),
@@ -37,6 +39,7 @@ class GenerateFullProjectCompact extends Command
             'Config' => base_path('config'),
             'Routes' => base_path('routes'),
             'Tests' => base_path('Tests'),
+            'Console' => app_path('Console'),
             //    'Resources_view' => base_path('resources/views'),
             //    'Resources_view_layouts' => base_path('resources/views/layouts'),
             //    'Resources_view_layouts_main' => base_path('resources/views/layouts_main'),
@@ -53,6 +56,7 @@ class GenerateFullProjectCompact extends Command
         foreach ($sections as $sectionName => $path) {
             if (! File::exists($path)) {
                 $this->warn("$sectionName directory not found, skipping...");
+
                 continue;
             }
 
@@ -66,6 +70,7 @@ class GenerateFullProjectCompact extends Command
                 if ($sectionName === 'Migrations') {
                     return $file->getExtension() === 'php';
                 }
+
                 return $file->getExtension() == 'php';
             });
 
