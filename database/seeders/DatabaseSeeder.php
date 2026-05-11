@@ -14,6 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        \User::updateOrCreate(
+            ['email' => 'test@test.com'],
+            [
+                'name' => 'Test',
+                'password' => bcrypt('password')
+            ]
+        );
         $this->call([
             UserSeeder::class,
             CategorySeeder::class,

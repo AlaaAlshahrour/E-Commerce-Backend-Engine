@@ -83,7 +83,7 @@ class CartController extends Controller
         );
 
         if (!$result['success']) {
-            return response()->json(['message' => $result['message']], 422);
+            return ResponseHelper::jsonResponse(null, $result['message'], 422);
         }
 
         return ResponseHelper::jsonResponse($result['message']);

@@ -9,19 +9,20 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $orderService) {}
+    public function __construct(protected OrderService $orderService)
+    {
+    }
 
     public function index()
     {
         $result = $this->orderService->getUserOrders();
 
         if (!$result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '', 404);
+            return ResponseHelper::jsonResponse($result['message'], '');
         }
 
         return response()->json(['data' => $result['data']]);
     }
-
 
 
     public function show(int $id)
@@ -49,7 +50,7 @@ class OrderController extends Controller
 
         return response()->json([
             'message' => $result['message'],
-            'data'    => $result['data'],
+            'data' => $result['data'],
         ]);
     }
 
@@ -64,15 +65,10 @@ class OrderController extends Controller
         ]));
 
         if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message'],
-                'data'    => $result['data'] ?? [],
-            ], 422);
+            $message = isset($result['message']) ? $result['message'] : 'An error occurred';
+            return ResponseHelper::jsonResponse(null, $message, 422);
         }
 
-        return response()->json([
-            'message' => $result['message'],
-            'data'    => $result['data'],
-        ], 201);
+        return ResponseHelper::jsonResponse($result['data'], $result['message'], 201);
     }
 }
