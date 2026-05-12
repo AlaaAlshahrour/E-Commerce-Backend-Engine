@@ -89,13 +89,28 @@ class OrderService
         }
 
         $cartItems = $cart->cartItems()->with('product.inventory')->get();
-        $unavailable = $cartItems->filter(function ($item) {
+        $productIds = $cartItems->pluck('product_id')->sort()->values();
 
-            $stock = $item->product->inventory?->quantity ?? 0;
-            $requested = $item->quantity;
 
-            return $stock < $requested;
-        });
+        $inventories = Inventory::whereIn('product_id', $productIds)
+            ->orderBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+        sleep(1);
+        $unavailable = collect();
+        foreach ($cartItems as $item) {
+            $inventory = $inventories->get($item->product_id);
+            $stock = $inventory ? $inventory->quantity : 0;
+
+            if ($stock < $item->quantity) {
+                $unavailable->push([
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'requested' => $item->quantity,
+                    'available' => $stock,
+                ]);
+            }
+        }
 
         if ($unavailable->isNotEmpty()) {
             return [
@@ -123,7 +138,7 @@ class OrderService
             ];
         }
 
-        $order = $this->orderRepository->createOrderUnsafe($user, $cart, $amount, $data, $cartItems);
+        $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems,$inventories);
 
 
         $transaction = $this->makeTransaction($wallet, $amount, $order);
@@ -150,13 +165,13 @@ class OrderService
     public function checkoutSafe(array $data): array
     {
         $user = Auth::user();
-        $lock = Cache::lock("checkout:user:{$user->id}", 30);// previnting the same user to checkout twice.
-        $inventoryLock = Cache::lock('inventory', 3);
-        if (!$lock->get()) {
+        $perUserLock = Cache::lock("checkout:user:{$user->id}");// previnting the same user to checkout twice.
+        $inventoryLock = Cache::lock('inventory', 2);
+        if (!$perUserLock->get()) {
             return ['success' => false, 'message' => 'Checkout in progress'];
         }
         try {
-            $res = DB::transaction(function () use ($data, $lock, $user, $inventoryLock) {
+            $res = DB::transaction(function () use ($data, $perUserLock, $user, $inventoryLock) {
 
                 // Validate Cart
                 $cart = $user->cart;
@@ -209,9 +224,7 @@ class OrderService
                         'data' => $unavailable,
                     ];
                 }
-                foreach ($productIds as $productId) {
-                Cache::increment("product:active_purchases:{$productId}");
-                }
+
                 // Validate user has amount.
                 $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
 
@@ -228,17 +241,14 @@ class OrderService
                 }
 
                 // Create the order.
-                $order = $this->orderRepository->createOrderSafe($user, $cart, $amount, $data, $cartItems, $inventories);
-                $lock->release();
+                $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems, $inventories);
+                $perUserLock->release();
 
                 $transaction = $this->makeTransaction($wallet, $amount, $order);
 
 
                 $order->update(['payment_status' => 'paid']);
 
-                foreach ($productIds as $productId) {
-                    Cache::decrement("product:active_purchases:{$productId}");
-                }
 
                 return [
                     'success' => true,
@@ -252,7 +262,7 @@ class OrderService
             });
             return $res;
         } finally {
-            $lock->release();
+            $perUserLock->release();
             $inventoryLock->release();
         }
     }

@@ -6,29 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * CartRaceSeeder
- * ==============
- * Scenario: Same user updates the same cart item quantity from two devices simultaneously.
- *
- * UNSAFE outcome  → both reads get the same old quantity, both writes succeed,
- *                   one update silently overwrites the other (lost update).
- * SAFE outcome    → Cache lock blocks the second request immediately,
- *                   returns "Quantity updated From Another Device".
- *
- * Run:
- *   php artisan db:seed --class=CartRaceSeeder
- *
- * Credentials:
- *   email:    double@example.com
- *   password: password
- *
- * The cart update URL uses product_id (not cart_item id):
- *   POST /api/cart/update/unsafe/{product_id}
- *   POST /api/cart/update/safe/{product_id}
- * Target product_id for this scenario: 1
- */
-class CartRaceSeeder extends Seeder
+class RaceCartUpdateSeeder extends Seeder
 {
     public function run(): void
     {
@@ -82,8 +60,5 @@ class CartRaceSeeder extends Seeder
             ['cart_id' => 4, 'product_id' => 1, 'quantity' => 5, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        $this->command->info('✅  CartRaceSeeder done.');
-        $this->command->info('   email: double@example.com | password: password');
-        $this->command->info('   cart item: product_id=1 | initial quantity=5 | stock=50');
     }
 }

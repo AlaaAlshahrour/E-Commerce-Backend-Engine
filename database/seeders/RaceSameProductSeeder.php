@@ -6,26 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * SameProductSeeder
- * =================
- * Scenario: Two different users race to buy the ONLY unit of a product.
- *
- * UNSAFE outcome → both read stock=1, both pass the check, both create
- *                  an order. Inventory goes to -1 (overselling).
- * SAFE outcome   → lockForUpdate serialises the reads. Second transaction
- *                  sees stock=0 and gets "Some products are out of stock".
- *
- * Run:
- *   php artisan db:seed --class=SameProductSeeder
- *
- * Credentials:
- *   buyer1@example.com / password
- *   buyer2@example.com / password
- *
- * Shared product: id=101, name="Limited Edition Sneaker", qty=1
- */
-class SameProductSeeder extends Seeder
+class RaceSameProductSeeder extends Seeder
 {
     public function run(): void
     {
@@ -101,9 +82,5 @@ class SameProductSeeder extends Seeder
             ['cart_id' => 6, 'product_id' => 101, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        $this->command->info('✅  SameProductSeeder done.');
-        $this->command->info('   buyer1@example.com / password  — wallet: $500, cart: product 101 x1');
-        $this->command->info('   buyer2@example.com / password  — wallet: $500, cart: product 101 x1');
-        $this->command->info('   Shared product 101: "Limited Edition Sneaker" — stock = 1');
-    }
+  }
 }

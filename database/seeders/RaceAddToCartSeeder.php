@@ -6,46 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * AddToCartSeeder
- * ===============
- * Scenario: Same user adds the same product to their cart from two devices
- *           at exactly the same time.
- *
- * THE RACE CONDITION (without fix):
- *   Both requests call $cart->cartItems()->where('product_id', ...)->exists()
- *   at the same time — both read FALSE (product not in cart yet).
- *   Both pass the check and both call INSERT into cart_items.
- *   The DB unique constraint on (cart_id, product_id) rejects the second
- *   INSERT with a duplicate key exception (SQLSTATE 23000).
- *   Because the app does not catch this exception, the second request
- *   returns HTTP 500 instead of a clean 422 error message.
- *
- * EXPECTED UNSAFE OUTCOME:
- *   Request 1 → 200  { message: "Product added to cart" }
- *   Request 2 → 500  (unhandled QueryException / duplicate entry)
- *
- * EXPECTED SAFE OUTCOME (after fix):
- *   Request 1 → 200  { message: "Product added to cart" }
- *   Request 2 → 422  { message: "Product already in cart" }
- *   (fix = wrap the insert in a try/catch for QueryException code 23000,
- *    or use insertOrIgnore, or add a DB-level advisory lock)
- *
- * Run:
- *   php artisan db:seed --class=AddToCartSeeder
- *
- * Credentials:
- *   email:    cart@example.com
- *   password: password
- *   product:  id=201, name="Race Condition Gadget", stock=50
- *
- * IMPORTANT — reset between runs:
- *   The test adds the product to the cart. Re-running without a fresh
- *   migration will always return "Product already in cart" for BOTH
- *   requests. Run:  php artisan migrate:fresh --seed  OR manually:
- *     DELETE FROM cart_items WHERE product_id = 201;
- */
-class AddToCartSeeder extends Seeder
+class RaceAddToCartSeeder extends Seeder
 {
     const PRODUCT_ID = 201;
     const USER_ID    = 20;
@@ -120,14 +81,5 @@ class AddToCartSeeder extends Seeder
             'updated_at' => now(),
         ]]);
 
-        // cart_items intentionally left EMPTY — both requests race to be first
-
-        $this->command->info('✅  AddToCartSeeder done.');
-        $this->command->info('   email: cart@example.com | password: password');
-        $this->command->info('   product: id=201 "Race Condition Gadget" | stock=50');
-        $this->command->info('   cart is EMPTY — both requests will race to add product 201');
-        $this->command->info('');
-        $this->command->info('   ⚠️  To re-run the test without full migrate:fresh:');
-        $this->command->info('      DELETE FROM cart_items WHERE product_id = 201;');
-    }
+ }
 }

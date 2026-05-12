@@ -7,10 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CartController extends Controller
 {
-    protected $cartService;
+    protected CartService $cartService;
 
     public function __construct(CartService $cartService)
     {
@@ -26,7 +27,7 @@ class CartController extends Controller
         $result = $this->cartService->addProductToCart($product_id, $request->input('quantity'));
 
         if (!$result['success']) {
-            return ResponseHelper::jsonResponse('', $result['message'], 422);
+            return ResponseHelper::jsonResponse('', $result['message'], 422,false);
         }
 
         return ResponseHelper::jsonResponse('', $result['message'], 200);
@@ -37,20 +38,18 @@ class CartController extends Controller
         $user = Auth::user();
         $result = $this->cartService->getAllProductsInCart($user);
 
-        if (isset($result['message'])) {
-            return ResponseHelper::jsonResponse($result['message']);
+        if (!$result['success']) {
+            return ResponseHelper::jsonResponse([], $result['message'], 404, false);
         }
 
-        return response()->json([
-            'data' => $result['products'],
-            'total_price' => (float)$result['total_price'],
-        ]);
+        return ResponseHelper::jsonResponse($result['data'], $result['message']);
+
     }
 
     public function deleteAll()
     {
         $this->cartService->deleteAll();
-        return ResponseHelper::jsonResponse('Cart cleared successfully');
+        return ResponseHelper::jsonResponse(null, 'Cart cleared successfully');
     }
 
     public function deleteProducts(Request $request)
@@ -63,14 +62,12 @@ class CartController extends Controller
         $result = $this->cartService->deleteProducts($request->input('product_ids'));
 
         if (!$result['success']) {
-            return response()->json(['message' => $result['message']], 422);
+            ResponseHelper::jsonResponse(null, $result['message'], 422, false);
         }
+        $data = ['deleted_ids' => $result['deleted_ids'],
+            'not_found_ids' => $result['not_found_ids']];
 
-        return response()->json([
-            'message' => $result['message'],
-            'deleted_ids' => $result['deleted_ids'],
-            'not_found_ids' => $result['not_found_ids'],
-        ]);
+        return ResponseHelper::jsonResponse($data, $result['message']);
     }
 
     public function update(Request $request, int $productId)
@@ -78,61 +75,28 @@ class CartController extends Controller
 
         $request->validate([
             'quantity' => 'required|integer|min:1',
-
+            'safe' => 'sometimes'
         ]);
-
-
-        $result = $this->cartService->updateProductQuantityUnsafe(
-            $productId,
-            $request->input('quantity')
-        );
-
-        if (!$result['success']) {
-            return ResponseHelper::jsonResponse(null, $result['message'], 422);
-        }
-
-        return ResponseHelper::jsonResponse($result['message']);
-    }
-
-    public function updateUnsafe(Request $request, int $productId)
-    {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $result = $this->cartService
-            ->updateProductQuantityUnsafe(
-                $productId,
-                $request->quantity
-            );
-
-        if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message']
-            ], 422);
-        }
-
-        return response()->json($result);
-    }
-
-    public function updateSafe(Request $request, int $productId)
-    {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $result = $this->cartService
+        $safe = $request->query('safe') == "1";
+//        return $safe;
+        Log::info($safe);
+        $result = $safe ? $this->cartService
             ->updateProductQuantitySafe(
                 $productId,
                 $request->quantity
+            )
+            :
+            $this->cartService->updateProductQuantityUnsafe(
+                $productId,
+                $request->quantity
             );
 
         if (!$result['success']) {
-            return response()->json([
-                'message' => $result['message']
-            ], 422);
+            return ResponseHelper::jsonResponse(null, $result['message'], 422,false);
         }
 
-        return response()->json($result);
+        return ResponseHelper::jsonResponse(null, $result['message']);
     }
+
+
 }

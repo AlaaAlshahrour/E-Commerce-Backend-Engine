@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -14,7 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        \User::updateOrCreate(
+        User::updateOrCreate(
             ['email' => 'test@test.com'],
             [
                 'name' => 'Test',
@@ -22,8 +23,6 @@ class DatabaseSeeder extends Seeder
             ]
         );
         $this->call([
-            CartRaceSeeder::class,
-
             UserSeeder::class,
             CategorySeeder::class,
             ProductSeeder::class,

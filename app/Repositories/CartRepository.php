@@ -97,11 +97,5 @@ class CartRepository
             ->where('product_id', $productId)
             ->update(['quantity' => $quantity]);
     }
-    public function updateProductQuantitySafe(Cart $cart, int $productId, int $quantity, $updated_at): bool
-    {
-        return $cart->cartItems()
-            ->where('product_id', $productId)
-            ->where('updated_at', $updated_at)
-            ->update(['quantity' => $quantity,'updated_at' => $updated_at]);
-    }
+
 }

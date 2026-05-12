@@ -55,7 +55,7 @@ class InventoryService
             return ['success' => false, 'message' => 'Product not found in inventory'];
         }
 
-        $this->inventoryRepository->updateQuantity($productId, $quantity);
+        $this->inventoryRepository->incrementQuantity($productId, $quantity);
 
         return ['success' => true, 'message' => 'Inventory updated successfully'];
     }
@@ -72,19 +72,7 @@ class InventoryService
                 return ['success' => false, 'message' => 'Product not found'];
             }
 
-            $secondsSinceLastUpdate = now()->diffInSeconds($inventory->updated_at);
-            $pendingPurchases = (int) Cache::get("product:active_purchases:{$productId}", 0);
-
-            if ($secondsSinceLastUpdate < 5 || $pendingPurchases >0) {
-                return [
-                    'success' => false,
-                    'message' => 'Inventory was just modified or has a recent purchase. Retry in a moment to avoid overwriting it.',
-
-                ];
-            }
-
-
-            $inventory->update(['quantity' => $quantity]);
+            $this->inventoryRepository->incrementQuantity($productId, $quantity);
 
             return ['success' => true, 'message' => 'Inventory updated successfully'];
         });

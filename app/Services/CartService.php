@@ -54,7 +54,8 @@ class CartService
             if ($e->getCode() === '23000') {  // Duplicate entry
                 return ['success' => false, 'message' => 'Product already in cart'];
             }
-            throw $e;
+            return ['success' => false, 'message' => 'An Error Occurred'];
+
         }
         return ['success' => true, 'message' => 'Product added to cart'];
     }
@@ -64,16 +65,16 @@ class CartService
         $cart = $user->cart;
 
         if (!$cart) {
-            return ['message' => 'Cart is empty'];
+            return ['success' => false, 'message' => 'Cart is empty'];
         }
 
         $cartData = $this->cartRepository->getCartProducts($cart);
 
         if ($cartData['products']->isEmpty()) {
-            return ['message' => 'Cart is empty'];
+            return ['success' => false, 'message' => 'Cart is empty'];
         }
 
-        return $cartData;
+        return ['success' => true, 'message' => 'Products Retrieved', 'data' => $cartData];
     }
 
     public function deleteAll(): void
@@ -118,10 +119,7 @@ class CartService
         // and before saving the new quantity we check if there is someone who has updated the quantity while we were doing our business logic
         // in this way , we can tell user that his update failed.
 
-        // Logging
-        $requestId = uniqid();
 
-        \Log::info("[$requestId] UNSAFE REQUEST STARTED");
         $user = Auth::user();
         $cart = $user->cart;
 
@@ -130,11 +128,9 @@ class CartService
         }
 
         $cartItem = $cart->cartItems()->where('product_id', $productId)->first();
-        \Log::info("[$requestId] CURRENT QUANTITY: " . $cartItem->quantity);
 
-        \Log::info("[$requestId] ENTERING CRITICAL SECTION");
-//        sleep(rand(2,3));
-//        \Log::info("[$requestId] WOKE UP AFTER SLEEP");
+
+
 
         if (!$cartItem) {
             return ['success' => false, 'message' => 'Product not found in cart'];
@@ -153,41 +149,29 @@ class CartService
                 'message' => "Only {$availableStock} available",
             ];
         }
-        \Log::info("[$requestId] UPDATING TO QUANTITY = $quantity");
+
         $success = $this->cartRepository->updateProductQuantity($cart, $productId, $quantity);
-        \Log::info("[$requestId] UPDATE RESULT = " . ($success ? 'SUCCESS' : 'FAILED'));
+
         return ['success' => true, 'message' => 'Quantity updated successfully'];
     }
 
     public function updateProductQuantitySafe(int $productId, int $quantity): array
     {
 
-        // Logging
-        $requestId = uniqid();
-
-        \Log::info("[$requestId] SAFE REQUEST STARTED");
         $user = Auth::user();
         $cart = $user->cart;
-        $lock = Cache::lock("update_cart:$cart->id:$productId", 20);
+        $lock = Cache::lock("update_cart:$cart->id:$productId");
         try {
 
             if (!$lock->get())
-                return ['success' => false, 'message' => 'Quantity updated From Another Device'];
+                return ['success' => false, 'message' => 'Quantity updated From Another DeviceL'];
 
             if (!$cart) {
                 return ['success' => false, 'message' => 'Cart is empty'];
             }
 
             $cartItem = CartItem::where('product_id', $productId)->where('cart_id', $cart->id)->lockForUpdate()->first();
-            \Log::info("[$requestId] CURRENT QUANTITY: " . $cartItem->quantity);
 
-            \Log::info("[$requestId] CURRENT VERSION: " . $cartItem->updated_at);
-
-            $originalUpdatedAt = $cartItem->updated_at;
-            \Log::info("READ VERSION: " . $originalUpdatedAt);
-            \Log::info("[$requestId] ENTERING CRITICAL SECTION");
-//        sleep(rand(2,3));
-            \Log::info("[$requestId] WOKE UP AFTER SLEEP");
             if (!$cartItem) {
                 return ['success' => false, 'message' => 'Product not found in cart'];
             }
@@ -205,10 +189,8 @@ class CartService
                     'message' => "Only {$availableStock} available",
                 ];
             }
-            \Log::info("[$requestId] TRYING TO UPDATE TO QUANTITY = $quantity");
-            $success = $this->cartRepository->updateProductQuantitySafe($cart, $productId, $quantity, $originalUpdatedAt);
+            $success = $this->cartRepository->updateProductQuantity($cart, $productId, $quantity);
             $lock->release();
-            \Log::info("[$requestId] UPDATE RESULT = " . ($success ? 'SUCCESS' : 'FAILED'));
             if (!$success) {
                 return ['success' => false, 'message' => 'Quantity updated From Another Device'];
             }
@@ -219,3 +201,5 @@ class CartService
 
     }
 }
+
+

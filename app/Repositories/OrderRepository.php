@@ -33,7 +33,8 @@ class OrderRepository
     }
 
 
-    public function createOrderUnsafe(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems): Order
+
+    public function createOrder(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems, Collection $inventories): Order
     {
 
         /** @var Order $order */
@@ -53,35 +54,7 @@ class OrderRepository
         $order->orderItems()->createMany($orderItems);
 
         foreach ($cartItems as $item) {
-            $item->product->inventory()->decrement('quantity', $item->quantity);
-        }
-
-        $cart->cartItems()->delete();
-
-        return $order->load('orderItems.product:id,name,photo_url');
-
-    }
-    public function createOrderSafe(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems, Collection $lockedInventories): Order
-    {
-
-        /** @var Order $order */
-        $order = $user->orders()->create([
-            'status' => 'pending',
-            'total_amount' => $totalAmount,
-            'shipping_address' => $data['shipping_address'],
-            'payment_status' => 'pending',
-        ]);
-
-        $orderItems = $cartItems->map(fn($item) => [
-            'product_id' => $item->product_id,
-            'quantity' => $item->quantity,
-            'unit_price' => $item->product->price,
-        ])->toArray();
-
-        $order->orderItems()->createMany($orderItems);
-
-        foreach ($cartItems as $item) {
-            $inventory = $lockedInventories->get($item->product_id);
+            $inventory = $inventories->get($item->product_id);
             $inventory->quantity -= $item->quantity;
             $inventory->save();
         }

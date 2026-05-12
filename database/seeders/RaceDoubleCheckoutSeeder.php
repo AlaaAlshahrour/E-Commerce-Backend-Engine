@@ -6,22 +6,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * DoubleCheckoutSeeder
- * ====================
- * Scenario: Same user fires two checkout requests simultaneously.
- *
- * UNSAFE outcome  → both succeed, wallet is double-charged, double orders created.
- * SAFE outcome    → second request is rejected with "Checkout in progress".
- *
- * Run:
- *   php artisan db:seed --class=DoubleCheckoutSeeder
- *
- * Credentials:
- *   email:    double@example.com
- *   password: password
- */
-class DoubleCheckoutSeeder extends Seeder
+
+class RaceDoubleCheckoutSeeder extends Seeder
 {
     public function run(): void
     {
@@ -94,8 +80,5 @@ class DoubleCheckoutSeeder extends Seeder
             ['cart_id' => 4, 'product_id' => 3, 'quantity' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        $this->command->info('✅  DoubleCheckoutSeeder done.');
-        $this->command->info('   email: double@example.com | password: password');
-        $this->command->info('   wallet: $999.00 | cart: products [1, 2, 3] | total per checkout: $154.97');
-    }
+   }
 }

@@ -16,9 +16,10 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
+        $data = $request->validated();
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name' => $data['name'],
+            'email' => $data['email'],
             'password' => Hash::make($request->password),
         ]);
 
@@ -32,7 +33,8 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        if (! Auth::attempt($request->only('email', 'password'))) {
+        $data = $request->validated();
+        if (! Auth::attempt($data)) {
             return ResponseHelper::jsonResponse(null, 'Invalid credentials', 401, false);
         }
 

@@ -16,7 +16,7 @@ import http from 'k6/http';
  *    ✅ SAFE   — exactly one SUCCESS + one "Checkout in progress" failure
  *    ❌ UNSAFE — both return SUCCESS (double order, double charge)
  *
- *  SEEDER:   php artisan db:seed --class=DoubleCheckoutSeeder
+ *  SEEDER:   php artisan db:seed --class=RaceDoubleCheckoutSeeder
  *  ENDPOINT: POST /api/orders/checkout/double-checkout
  *
  *  Run: k6 run double-checkout-unsafe.js
@@ -81,7 +81,7 @@ export default function (data) {
     // ── Report ────────────────────────────────────────────────────────
     console.log('\n── Request 1 ──────────────────────────────');
     console.log(`  HTTP Status : ${res1.status}`);
-    console.log(`  Success     : ${b1.success ?? 'N/A'}`);
+    console.log(`  Success     : ${b1.successful ?? 'N/A'}`);
     console.log(`  Message     : ${b1.message ?? '-'}`);
     if (b1.data?.order)       console.log(`  Order ID    : ${b1.data.order.id}`);
     if (b1.data?.wallet_balance !== undefined)
@@ -89,28 +89,11 @@ export default function (data) {
 
     console.log('\n── Request 2 ──────────────────────────────');
     console.log(`  HTTP Status : ${res2.status}`);
-    console.log(`  Success     : ${b2.success ?? 'N/A'}`);
+    console.log(`  Success     : ${b2.successful ?? 'N/A'}`);
     console.log(`  Message     : ${b2.message ?? '-'}`);
     if (b2.data?.order)       console.log(`  Order ID    : ${b2.data.order.id}`);
     if (b2.data?.wallet_balance !== undefined)
                               console.log(`  Wallet after: $${b2.data.wallet_balance}`);
 
-    // ── Verdict ───────────────────────────────────────────────────────
-    const bothSucceeded = b1.success === true && b2.success === true;
-    const oneBlocked    = (b1.success === true && b2.success === false)
-                       || (b1.success === false && b2.success === true);
-
-    console.log('\n══════════════════════════════════════════');
-    if (bothSucceeded) {
-        console.log('  ❌ UNSAFE BEHAVIOUR DETECTED');
-        console.log('     Both requests succeeded — double order created,');
-        console.log('     wallet charged twice. No concurrency protection.');
-    } else if (oneBlocked) {
-        console.log('  ✅ SAFE BEHAVIOUR CONFIRMED');
-        console.log('     One request succeeded, the other was blocked.');
-        console.log('     Distributed lock prevented the double checkout.');
-    } else {
-        console.log('  ⚠️  UNEXPECTED OUTCOME — check messages above.');
-    }
     console.log('══════════════════════════════════════════\n');
 }

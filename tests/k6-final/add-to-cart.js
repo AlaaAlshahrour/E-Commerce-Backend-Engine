@@ -11,7 +11,7 @@ import http from 'k6/http';
  *    inserting — but both requests read FALSE simultaneously, both
  *    pass the check, and both try to INSERT.
  *
- *  SEEDER:   php artisan db:seed --class=AddToCartSeeder
+ *  SEEDER:   php artisan db:seed --class=RaceAddToCartSeeder
  *
  *  Run: k6 run add-to-cart.js
  * ═══════════════════════════════════════════════════════════════════
@@ -78,48 +78,13 @@ export default function (data) {
     // ── Report ────────────────────────────────────────────────────────
     console.log('\n── Request 1 (Device A) ────────────────────────────────');
     console.log(`  HTTP Status : ${res1.status}`);
-    console.log(`  Success     : ${b1.success ?? (res1.status === 200 ? 'true' : 'false')}`);
+    console.log(`  Success     : ${b1.successful ?? (res1.status === 200 ? 'true' : 'false')}`);
     console.log(`  Message     : ${b1.message ?? '-'}`);
 
     console.log('\n── Request 2 (Device B) ────────────────────────────────');
     console.log(`  HTTP Status : ${res2.status}`);
-    console.log(`  Success     : ${b2.success ?? (res2.status === 200 ? 'true' : 'false')}`);
+    console.log(`  Success     : ${b2.successful ?? (res2.status === 200 ? 'true' : 'false')}`);
     console.log(`  Message     : ${b2.message ?? '-'}`);
-
-    // ── Verdict ───────────────────────────────────────────────────────
-    const r1ok     = res1.status === 200;
-    const r2ok     = res2.status === 200;
-    const r1crash  = res1.status === 500;
-    const r2crash  = res2.status === 500;
-    const r1clean  = res1.status === 422;
-    const r2clean  = res2.status === 422;
-
-    console.log('\n═══════════════════════════════════════════════════════');
-
-     if ((r1ok && r2clean) || (r2ok && r1clean)) {
-        // One succeeded, other got a clean 422
-        const winner = r1ok ? 1 : 2;
-        console.log('  ✅ SAFE BEHAVIOUR — Duplicate Handled Gracefully');
-        console.log(`     Request ${winner} succeeded: product ${PRODUCT_ID} added to cart.`);
-        console.log(`     The other request received a clean 422 with message:`);
-        console.log(`     "${r1ok ? b2.message : b1.message}"`);
-        console.log(`     The DB unique constraint was the safety net, and the`);
-        console.log(`     app caught the exception and returned a proper response.`);
-
-    } else if (r1ok && r2ok) {
-        // Both succeeded — this should be impossible due to unique constraint
-        console.log('  🚨 CRITICAL — Both requests succeeded!');
-        console.log('     The unique constraint on cart_items may be missing.');
-        console.log('     Check the migration for unique([cart_id, product_id]).');
-
-    } else if (r1crash && r2crash) {
-        console.log('  ⚠️  Both requests crashed — check server logs.');
-        console.log('     This may indicate an auth issue or missing cart record.');
-
-    } else {
-        console.log(`  ⚠️  Unexpected outcome: ${res1.status} / ${res2.status}`);
-        console.log('     Check the server logs for details.');
-    }
 
     console.log('═══════════════════════════════════════════════════════\n');
 }

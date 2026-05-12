@@ -15,7 +15,7 @@ import http from 'k6/http';
  *              "Some products are out of stock".
  *    ❌ UNSAFE — both succeed (overselling occurs).
  *
- *  SEEDER:   php artisan db:seed --class=SameProductSeeder
+ *  SEEDER:   php artisan db:seed --class=RaceSameProductSeeder
  *            (sets product 101 quantity = 1)
  *  ENDPOINT: POST /api/orders/checkout/safe
  *
@@ -35,7 +35,7 @@ export const options = {
 };
 
 const BASE_URL    = 'http://localhost';
-const PRODUCT_ID  = 101; // must match SameProductSeeder
+const PRODUCT_ID  = 101; // must match RaceSameProductSeeder
 
 const USERS = [
     { email: 'buyer1@example.com', password: 'password' },
@@ -73,9 +73,6 @@ export default function (data) {
     const user  = USERS[idx].email;
 
     console.log(`\n═════════════════════════════════════════════════`);
-    console.log(`  VU ${__VU} (${user}) firing checkout request`);
-    console.log(`  Initial product quantity = ${data.initialQuantity}`);
-    console.log(`═════════════════════════════════════════════════`);
 
     const res = http.post(
         `${BASE_URL}/api/orders/checkout?safe=1`,
@@ -94,7 +91,7 @@ export default function (data) {
     console.log(`\n── VU ${__VU} (${user}) ────────────────────────────`);
     console.log(`  Body     : ${body ?? '-'}`);
     console.log(`  HTTP Status : ${res.status}`);
-    console.log(`  Success     : ${body.success ?? 'N/A'}`);
+    console.log(`  Success     : ${body.successful ?? 'N/A'}`);
     console.log(`  Message     : ${body.message ?? '-'}`);
     if (body.data?.order) console.log(`  Order ID    : ${body.data.order.id}`);
 
@@ -108,14 +105,5 @@ export default function (data) {
     console.log(`  Quantity AFTER race  : ${finalQuantity}`);
 
     console.log(`\n═════════════════════════════════════════════════`);
-    if (body.success === true && finalQuantity === 0) {
-        console.log(`  ✅ SAFE BEHAVIOUR CONFIRMED — VU ${__VU} succeeded, product sold out.`);
-    } else if (body.success === false && res.status === 400 && body.message === 'Some products are out of stock') {
-        console.log(`  ✅ SAFE BEHAVIOUR CONFIRMED — VU ${__VU} blocked as expected.`);
-    } else if (body.success === true && finalQuantity < data.initialQuantity) {
-        console.log(`  ❌ UNSAFE BEHAVIOUR DETECTED — Overselling occurred or unexpected state.`);
-    } else {
-        console.log(`  ⚠️  UNEXPECTED OUTCOME — check messages above.`);
-    }
-    console.log(`═════════════════════════════════════════════════\n`);
+
 }

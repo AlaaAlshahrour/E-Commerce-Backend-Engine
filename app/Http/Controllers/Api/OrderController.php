@@ -18,10 +18,11 @@ class OrderController extends Controller
         $result = $this->orderService->getUserOrders();
 
         if (!$result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '');
+            return ResponseHelper::jsonResponse(null,$result['message'],  404, false);
         }
 
-        return response()->json(['data' => $result['data']]);
+
+        return ResponseHelper::jsonResponse($result['data'],$result['message']);
     }
 
 
@@ -30,10 +31,11 @@ class OrderController extends Controller
         $result = $this->orderService->getOrderById($id);
 
         if (!$result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '', 404);
+            return ResponseHelper::jsonResponse(null,$result['message'],  404, false);
         }
 
-        return response()->json(['data' => $result['data']]);
+
+        return ResponseHelper::jsonResponse($result['data'],$result['message']);
     }
 
     public function updateStatus(int $id, Request $request)
@@ -45,13 +47,10 @@ class OrderController extends Controller
         $result = $this->orderService->updateStatus($id, $request->input('status'));
 
         if (!$result['success']) {
-            return response()->json(['message' => $result['message']], 422);
+            ResponseHelper::jsonResponse(null, $result['message'], 422, false);
         }
 
-        return response()->json([
-            'message' => $result['message'],
-            'data' => $result['data'],
-        ]);
+        return ResponseHelper::jsonResponse($result['data'], $result['message']);
     }
 
     public function checkout(CheckoutRequest $request)
@@ -64,7 +63,7 @@ class OrderController extends Controller
 
         if (!$result['success']) {
             $message = isset($result['message']) ? $result['message'] : 'An error occurred';
-            return ResponseHelper::jsonResponse(null, $message, 422);
+            return ResponseHelper::jsonResponse(null, $message, 422, false);
         }
 
         return ResponseHelper::jsonResponse($result['data'], $result['message'], 201);

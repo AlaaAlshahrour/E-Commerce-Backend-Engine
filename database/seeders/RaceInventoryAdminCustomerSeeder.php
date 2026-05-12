@@ -6,42 +6,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-/**
- * AdminInventoryRaceSeeder
- * ========================
- * Scenario: Admin updates inventory quantity while a customer is
- *           simultaneously checking out the same product.
- *
- * THE RACE (unsafe):
- *   Inventory starts at qty=40.
- *   Admin reads 40, decides to set it to 60 (+20 restock).
- *   Customer buys 10 units at the same time.
- *   Admin blindly writes 60 → customer's 10-unit deduction is lost.
- *   Final qty = 60 instead of correct 50.
- *
- * UNSAFE OUTCOME:
- *   Checkout → 200  order created, inventory decremented to 30
- *   Admin    → 200  inventory overwritten to 60 (hides the sale)
- *   Final DB qty = 60 — 10 sold units vanished from records.
- *
- * SAFE OUTCOME:
- *   Checkout sets cache key product:active_purchases:301 = 10
- *   Admin hits safe endpoint → sees pendingPurchases=10 → blocked
- *   Returns: "Cannot update now — Product is being purchased."
- *   Admin retries after checkout completes → sets correct value.
- *
- * Run:
- *   php artisan db:seed --class=AdminInventoryRaceSeeder
- *
- * Credentials:
- *   buyer: buyer@example.com  / password  (role: User)
- *   admin: admin@example.com  / password  (role: Admin)
- *
- * Product: id=301, qty=40
- * Buyer cart: 10 units of product 301
- * Admin will try to set qty=60 simultaneously
- */
-class AdminInventoryRaceSeeder extends Seeder
+
+class RaceInventoryAdminCustomerSeeder extends Seeder
 {
     const PRODUCT_ID  = 301;
     const BUYER_ID    = 30;
@@ -143,17 +109,5 @@ class AdminInventoryRaceSeeder extends Seeder
             'updated_at' => now(),
         ]]);
 
-        $this->command->info('✅  AdminInventoryRaceSeeder done.');
-        $this->command->info('   buyer@example.com / password  — cart: 10x product 301 | wallet: $500');
-        $this->command->info('   admin@example.com / password  — will try to set qty=60');
-        $this->command->info('   Product 301 initial qty = 40');
-        $this->command->info('');
-        $this->command->info('   Expected safe final qty  = 40 (admin blocked, buyer decrements)');
-        $this->command->info('   Expected unsafe final qty = 60 (admin overwrites buyers deduction)');
-        $this->command->info('');
-        $this->command->info('   ⚠️  Reset between runs:');
-        $this->command->info('      UPDATE inventories SET quantity=40 WHERE product_id=301;');
-        $this->command->info('      DELETE FROM cart_items WHERE product_id=301;');
-        $this->command->info('      INSERT INTO cart_items ...; (or re-seed)');
-    }
+  }
 }
