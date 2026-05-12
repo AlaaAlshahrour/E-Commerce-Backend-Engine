@@ -49,10 +49,12 @@ namespace App\Services;class CartService{protected $cartRepository;public functi
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Services\DailySalesProcessingService.php =====
 namespace App\Services;class DailySalesProcessingService{public function __construct(private ChunkedSalesProcessor $chunkedProcessor,private NormalSalesProcessor $normalProcessor,){}public function process(string $date,ProcessingMode $mode): array{return match($mode){ProcessingMode::Batch => $this->processBatch($date),ProcessingMode::Normal => $this->processNormal($date),ProcessingMode::Compare => $this->processCompare($date),};}private function processBatch(string $date): array{$result = $this->chunkedProcessor->process($date);return [
 'mode' => ProcessingMode::Batch->value,'date' => $date,'batch_result' => $result,];}private function processNormal(string $date): array{$result = $this->normalProcessor->process($date);return [
-'mode' => ProcessingMode::Normal->value,'date' => $date,'normal_result' => $result,];}private function processCompare(string $date): array{$normalResult = $this->normalProcessor->process($date);if($normalResult['skipped'] ?? false){return [
-'mode' => ProcessingMode::Compare->value,'date' => $date,'normal_result' => $normalResult,'batch_result' => null,'comparison' => null,'normal_skipped' => true,];}$batchResult = $this->chunkedProcessor->process($date);$comparison = [
-'memory_reduction_percent' => round((($normalResult['peak_memory'] - $batchResult['peak_memory'])/ $normalResult['peak_memory'])* 100,2),'speed_improvement_percent' => round((($normalResult['execution_time'] - $batchResult['execution_time'])/ $normalResult['execution_time'])* 100,2),'normal_execution_time' => $normalResult['execution_time'],'batch_execution_time' => $batchResult['execution_time'],'normal_peak_memory' => $normalResult['peak_memory'],'batch_peak_memory' => $batchResult['peak_memory'],];return [
-'mode' => ProcessingMode::Compare->value,'date' => $date,'normal_result' => $normalResult,'batch_result' => $batchResult,'comparison' => $comparison,'normal_skipped' => false,];}}
+'mode' => ProcessingMode::Normal->value,'date' => $date,'normal_result' => $result,];}private function processCompare(string $date): array{$batchResult = $this->chunkedProcessor->process($date);$normalResult = $this->normalProcessor->process($date);if($normalResult['skipped'] ?? false){return [
+'mode' => ProcessingMode::Compare->value,'date' => $date,'normal_result' => $normalResult,'batch_result' => null,'comparison' => null,'normal_skipped' => true,];}$comparison = [
+'memory_reduction_percent' => round((($normalResult['peak_memory'] - $batchResult['peak_memory'])/ $normalResult['peak_memory'])* 100,2),'speed_improvement_percent' => round((($normalResult['execution_time'] - $batchResult['execution_time'])/ $normalResult['execution_time'])* 100,2),'normal_execution_time' => $normalResult['execution_time'],'batch_execution_time' => $batchResult['execution_time'],'normal_peak_memory' => $normalResult['peak_memory'],'batch_peak_memory' => $batchResult['peak_memory'],];$batchStats = $this->calculateBatchStatistics($batchResult);return [
+'mode' => ProcessingMode::Compare->value,'date' => $date,'normal_result' => $normalResult,'batch_result' => $batchResult,'comparison' => $comparison,'batch_stats' => $batchStats,'normal_skipped' => false,];}private function calculateBatchStatistics(array $batchResult): array{$batchesMetrics = $batchResult['batches_metrics'] ?? [];if(empty($batchesMetrics)){return [
+'average_batch_memory' => 0,'largest_batch_memory' => 0,'smallest_batch_memory' => 0,'batch_count' => 0,'batch_size' => 0,];}$memoryDeltas = array_column($batchesMetrics,'memory_delta_real_mb');return [
+'average_batch_memory' => round(array_sum($memoryDeltas)/ count($memoryDeltas),4),'largest_batch_memory' => round(max($memoryDeltas),4),'smallest_batch_memory' => round(min($memoryDeltas),4),'batch_count' => count($batchesMetrics),'batch_size' => $batchesMetrics[0]['orders_count'] ?? 0,];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Services\InventoryService.php =====
 namespace App\Services;class InventoryService{protected $inventoryRepository;public function __construct(InventoryRepository $inventoryRepository){$this->inventoryRepository = $inventoryRepository;}public function getAll(): array{$inventories = $this->inventoryRepository->getAll();if($inventories->isEmpty()){return ['message' => 'No inventory found'];}return ['data' => $inventories];}public function getByProductId(int $productId): array{$inventory = $this->inventoryRepository->getByProductId($productId);if(! $inventory){return ['message' => 'Product not found in inventory'];}return [
 'data' => [
@@ -147,26 +149,31 @@ namespace App\Jobs;class ProcessDailySalesJob implements ShouldQueue{use Queueab
 ? Carbon::parse($date)->toDateString(): Carbon::yesterday()->toDateString();$this->mode = $mode ?? ProcessingMode::Batch;}public function handle(DailySalesProcessingService $processingService): void{$exportStartTime = Carbon::now();Log::info('========== Daily Sales Job Started ==========');Log::info("Processing date:{$this->date}");Log::info("Mode:{$this->mode->value}");Log::info("Started at:{$exportStartTime}");$existingReport = DailySalesReport::where('date',$this->date)->first();if($existingReport){Log::warning("Report already exists for{$this->date}");return;}$result = $processingService->process($this->date,$this->mode);$this->generateAndSaveReport($result,$exportStartTime);Log::info('Daily sales report created successfully');Log::info('========== Job Finished ==========');}private function generateAndSaveReport(array $result,Carbon $exportStartTime): void{$pdfData = $this->preparePdfData($result);$pdf = Pdf::loadView('pdf.daily-sales-report',$pdfData);$pdfPath = "public/daily-reports/daily-sales-{$this->date}.pdf";Storage::put($pdfPath,$pdf->output());$exportEndTime = Carbon::now();$reportData = [
 'date' => $this->date,'processing_mode' => $this->mode->value,'total_orders' => $pdfData['total_orders'],'total_revenue' => $pdfData['total_revenue'],'pdf_path' => $pdfPath,'export_start_time' => $exportStartTime,'export_end_time' => $exportEndTime,];DailySalesReport::create($reportData);Log::info("Report exported at:{$exportEndTime}");}private function preparePdfData(array $result): array{return match($result['mode']){ProcessingMode::Batch->value => $this->prepareBatchPdfData($result),ProcessingMode::Normal->value => $this->prepareNormalPdfData($result),ProcessingMode::Compare->value => $this->prepareComparePdfData($result),};}private function prepareBatchPdfData(array $result): array{$batchResult = $result['batch_result'];return [
 'date' => $this->date,'processing_mode' => ProcessingMode::Batch->value,'total_orders' => $batchResult['total_orders'],'total_revenue' => $batchResult['total_revenue'],'orders' => $batchResult['orders_data'],'performance_metrics' => [
-'execution_time' => $batchResult['execution_time'],'peak_memory' => $batchResult['peak_memory'],'memory_used' => $batchResult['memory_used'],'batches_count' => $batchResult['batches_count'],],'batches_metrics' => $batchResult['batches_metrics'],'batch_timeline' => true,];}private function prepareNormalPdfData(array $result): array{$normalResult = $result['normal_result'];return [
+'execution_time' => $batchResult['execution_time'],'peak_memory' => $batchResult['peak_memory'],'memory_used' => $batchResult['memory_used'],'batches_count' => $batchResult['batches_count'],],'batches_metrics' => $batchResult['batches_metrics'],'batch_timeline' => true,'order_stats' => $this->calculateOrderStats($batchResult['orders_data']),];}private function prepareNormalPdfData(array $result): array{$normalResult = $result['normal_result'];return [
 'date' => $this->date,'processing_mode' => ProcessingMode::Normal->value,'total_orders' => $normalResult['total_orders'],'total_revenue' => $normalResult['total_revenue'],'orders' => $normalResult['orders_data'],'performance_metrics' => [
-'execution_time' => $normalResult['execution_time'],'peak_memory' => $normalResult['peak_memory'],'memory_used' => $normalResult['memory_used'],],'batch_timeline' => false,];}private function prepareComparePdfData(array $result): array{if($result['normal_skipped']){return $this->prepareBatchPdfData(['batch_result' => $result['batch_result']]);}$normalResult = $result['normal_result'];$batchResult = $result['batch_result'];$comparison = $result['comparison'];return [
+'execution_time' => $normalResult['execution_time'],'peak_memory' => $normalResult['peak_memory'],'memory_used' => $normalResult['memory_used'],],'batch_timeline' => false,'order_stats' => $this->calculateOrderStats($normalResult['orders_data']),];}private function prepareComparePdfData(array $result): array{if($result['normal_skipped']){return $this->prepareBatchPdfData(['batch_result' => $result['batch_result']]);}$normalResult = $result['normal_result'];$batchResult = $result['batch_result'];$comparison = $result['comparison'];$batchStats = $result['batch_stats'];$normalStats = [
+'orders_processed' => $normalResult['total_orders'],'execution_time' => $normalResult['execution_time'],'peak_memory_real' => $normalResult['memory_stats']['peak_real_mb'] ?? $normalResult['peak_memory'],'peak_memory_allocated' => $normalResult['memory_stats']['peak_alloc_mb'] ?? $normalResult['peak_memory'],'memory_delta' => $normalResult['memory_stats']['delta_total_real_mb'] ?? $normalResult['memory_used'],'start_memory_real' => $normalResult['memory_stats']['start_real_mb'] ?? 0,'end_memory_real' => $normalResult['memory_stats']['end_real_mb'] ?? 0,'orders_loaded' => $normalResult['total_orders'],'status' => $normalResult['skipped'] ? 'Skipped' : 'Completed','failed' => $normalResult['skipped'],];$batchStatsFull = [
+'orders_processed' => $batchResult['total_orders'],'execution_time' => $batchResult['execution_time'],'peak_memory_real' => $batchResult['memory_stats']['peak_real_mb'] ?? $batchResult['peak_memory'],'peak_memory_allocated' => $batchResult['memory_stats']['peak_alloc_mb'] ?? $batchResult['peak_memory'],'memory_delta' => $batchResult['memory_stats']['delta_real_mb'] ?? $batchResult['memory_used'],'start_memory_real' => $batchResult['memory_stats']['start_real_mb'] ?? 0,'end_memory_real' => $batchResult['memory_stats']['end_real_mb'] ?? 0,'orders_loaded' => $batchResult['total_orders'],'batch_count' => $batchStats['batch_count'],'batch_size' => $batchStats['batch_size'],'average_batch_memory' => $batchStats['average_batch_memory'],'largest_batch_memory' => $batchStats['largest_batch_memory'],'smallest_batch_memory' => $batchStats['smallest_batch_memory'],'status' => 'Completed','failed' => false,];return [
 'date' => $this->date,'processing_mode' => ProcessingMode::Compare->value,'total_orders' => $batchResult['total_orders'],'total_revenue' => $batchResult['total_revenue'],'orders' => $batchResult['orders_data'],'performance_metrics' => [
 'execution_time' => $batchResult['execution_time'],'peak_memory' => $batchResult['peak_memory'],'memory_used' => $batchResult['memory_used'],'batches_count' => $batchResult['batches_count'],],'batches_metrics' => $batchResult['batches_metrics'],'batch_timeline' => true,'benchmark_comparison' => [
-'normal_execution_time' => $comparison['normal_execution_time'],'batch_execution_time' => $comparison['batch_execution_time'],'speed_improvement_percent' => $comparison['speed_improvement_percent'],'normal_peak_memory' => $comparison['normal_peak_memory'],'batch_peak_memory' => $comparison['batch_peak_memory'],'memory_reduction_percent' => $comparison['memory_reduction_percent'],],];}}
+'normal_execution_time' => $comparison['normal_execution_time'],'batch_execution_time' => $comparison['batch_execution_time'],'speed_improvement_percent' => $comparison['speed_improvement_percent'],'normal_peak_memory' => $comparison['normal_peak_memory'],'batch_peak_memory' => $comparison['batch_peak_memory'],'memory_reduction_percent' => $comparison['memory_reduction_percent'],],'normal_stats' => $normalStats,'batch_stats' => $batchStatsFull,'comparison' => $comparison,'batch_details' => $batchResult['batches_metrics'],'order_stats' => $this->calculateOrderStats($batchResult['orders_data']),];}private function calculateOrderStats(array $ordersData): array{$statuses = array_column($ordersData,'status');$amounts = array_column($ordersData,'total_amount');$completed = count(array_filter($statuses,fn($s)=> $s === 'Completed'));$canceled = count(array_filter($statuses,fn($s)=> $s === 'Canceled'));$pending = count(array_filter($statuses,fn($s)=> $s === 'pending'));$processing = count(array_filter($statuses,fn($s)=> $s === 'Processing'));$total = count($ordersData);return [
+'completed_orders' => $completed,'canceled_orders' => $canceled,'pending_orders' => $pending,'processing_orders' => $processing,'total_cost' => round(array_sum($amounts),2),'average_order' => $total > 0 ? round(array_sum($amounts)/ $total,2): 0,];}}
 
 // === [Processors] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Processors\DailySales\ChunkedSalesProcessor.php =====
-namespace App\Processors\DailySales;class ChunkedSalesProcessor{private int $totalOrders = 0;private float $totalRevenue = 0;private array $ordersData = [];private array $batchesMetrics = [];private int $batchCounter = 0;public function process(string $date): array{$executionStartTime = microtime(true);$initialMemory = memory_get_usage(false);Log::info('========== Chunked Sales Processing Started ==========');Log::info("Processing date:{$date}");$dayStart = Carbon::parse($date)->startOfDay();$dayEnd = Carbon::parse($date)->endOfDay();Order::where('created_at','>=',$dayStart)->where('created_at','<',$dayEnd)->with('orderItems.product')->chunkById(1000,function($orders){$this->processBatch($orders);});$executionTime = round(microtime(true)- $executionStartTime,4);$peakMemory = round(memory_get_peak_usage(true)/ 1024 / 1024,4);$memoryUsed = round((memory_get_usage(false)- $initialMemory)/ 1024 / 1024,4);Log::info('========== Chunked Processing Completed ==========');Log::info("Total Orders:{$this->totalOrders}");Log::info("Total Revenue:{$this->totalRevenue}");Log::info("Execution Time:{$executionTime}s");Log::info("Peak Memory:{$peakMemory}MB");Log::info("Memory Used:{$memoryUsed}MB");Log::info("Batches Processed:{$this->batchCounter}");return [
-'total_orders' => $this->totalOrders,'total_revenue' => $this->totalRevenue,'execution_time' => $executionTime,'peak_memory' => $peakMemory,'memory_used' => $memoryUsed,'batches_count' => $this->batchCounter,'batches_metrics' => $this->batchesMetrics,'orders_data' => $this->ordersData,];}private function processBatch($orders): void{$this->batchCounter++;$memoryBefore = round(memory_get_usage(false)/ 1024 / 1024,4);$batchStartTime = microtime(true);Log::info("Processing Batch 
-Log::info("Batch Size:{$orders->count()}orders");foreach($orders as $order){$this->totalOrders++;$this->totalRevenue += $order->total_amount;if(count($this->ordersData)< 50){$this->ordersData[] = $this->formatOrder($order);}}$batchExecutionTime = round(microtime(true)- $batchStartTime,4);$memoryAfter = round(memory_get_usage(false)/ 1024 / 1024,4);$this->batchesMetrics[] = [
-'batch_number' => $this->batchCounter,'orders_count' => $orders->count(),'execution_time' => $batchExecutionTime,'memory_before' => $memoryBefore,'memory_after' => $memoryAfter,];Log::info("Batch 
-."Memory:{$memoryBefore}MB →{$memoryAfter}MB");}private function formatOrder($order): array{$items = [];foreach($order->orderItems as $item){$items[] = [
+namespace App\Processors\DailySales;class ChunkedSalesProcessor{private int $totalOrders = 0;private float $totalRevenue = 0;private array $ordersData = [];private array $batchesMetrics = [];private int $batchCounter = 0;public function process(string $date): array{$executionStartTime = microtime(true);$mem_start_real = memory_get_usage(false);$mem_start_alloc = memory_get_usage(true);Log::info('========== Chunked Sales Processing Started ==========');Log::info("Processing date:{$date}");Log::info(sprintf('Memory at START — Real: %.4f MB | Allocated: %.4f MB',$mem_start_real / 1024 / 1024,$mem_start_alloc / 1024 / 1024));$dayStart = Carbon::parse($date)->startOfDay();$dayEnd = Carbon::parse($date)->endOfDay();Order::where('created_at','>=',$dayStart)->where('created_at','<',$dayEnd)->with('orderItems.product')->chunkById(1000,function($orders){$this->processBatch($orders);});$mem_end_real = memory_get_usage(false);$mem_end_alloc = memory_get_usage(true);$peak_real = memory_get_peak_usage(false);$peak_alloc = memory_get_peak_usage(true);$delta_real = $mem_end_real - $mem_start_real;$delta_alloc = $mem_end_alloc - $mem_start_alloc;$executionTime = round(microtime(true)- $executionStartTime,4);Log::info('========== Chunked Processing Completed ==========');Log::info("Total Orders:{$this->totalOrders}");Log::info("Total Revenue:{$this->totalRevenue}");Log::info("Execution Time:{$executionTime}s");Log::info('--- Memory Statistics(Comprehensive)---');Log::info(sprintf('START — Real: %.4f MB | Allocated: %.4f MB',$mem_start_real / 1024 / 1024,$mem_start_alloc / 1024 / 1024));Log::info(sprintf('END — Real: %.4f MB | Allocated: %.4f MB',$mem_end_real / 1024 / 1024,$mem_end_alloc / 1024 / 1024));Log::info(sprintf('PEAK — Real: %.4f MB | Allocated: %.4f MB ← الأهم للتقرير',$peak_real / 1024 / 1024,$peak_alloc / 1024 / 1024));Log::info(sprintf('DELTA — Real: %.4f MB | Allocated: %.4f MB',$delta_real / 1024 / 1024,$delta_alloc / 1024 / 1024));Log::info("Batches Processed:{$this->batchCounter}");return [
+'total_orders' => $this->totalOrders,'total_revenue' => $this->totalRevenue,'execution_time' => $executionTime,'batches_count' => $this->batchCounter,'batches_metrics' => $this->batchesMetrics,'orders_data' => $this->ordersData,'memory_stats' => [
+'start_real_mb' => round($mem_start_real / 1024 / 1024,4),'start_alloc_mb' => round($mem_start_alloc / 1024 / 1024,4),'end_real_mb' => round($mem_end_real / 1024 / 1024,4),'end_alloc_mb' => round($mem_end_alloc / 1024 / 1024,4),'peak_real_mb' => round($peak_real / 1024 / 1024,4),'peak_alloc_mb' => round($peak_alloc / 1024 / 1024,4),'delta_real_mb' => round($delta_real / 1024 / 1024,4),'delta_alloc_mb' => round($delta_alloc / 1024 / 1024,4),],'peak_memory' => round($peak_alloc / 1024 / 1024,4),'memory_used' => round($delta_real / 1024 / 1024,4),];}private function processBatch($orders): void{$this->batchCounter++;$mem_before_real = memory_get_usage(false);$mem_before_alloc = memory_get_usage(true);$batchStartTime = microtime(true);Log::info("Processing Batch 
+foreach($orders as $order){$this->totalOrders++;$this->totalRevenue += $order->total_amount;if(count($this->ordersData)< 50){$this->ordersData[] = $this->formatOrder($order);}}$batchExecutionTime = round(microtime(true)- $batchStartTime,4);$mem_after_real = memory_get_usage(false);$mem_after_alloc = memory_get_usage(true);$this->batchesMetrics[] = [
+'batch_number' => $this->batchCounter,'orders_count' => $orders->count(),'execution_time' => $batchExecutionTime,'memory_before' => round($mem_before_alloc / 1024 / 1024,4),'memory_after' => round($mem_after_alloc / 1024 / 1024,4),'memory_before_real_mb' => round($mem_before_real / 1024 / 1024,4),'memory_after_real_mb' => round($mem_after_real / 1024 / 1024,4),'memory_delta_real_mb' => round(($mem_after_real - $mem_before_real)/ 1024 / 1024,4),];Log::info(sprintf('Batch 
+$this->batchCounter,$batchExecutionTime,$mem_before_real / 1024 / 1024,$mem_after_real / 1024 / 1024,($mem_after_real - $mem_before_real)/ 1024 / 1024,$mem_before_alloc / 1024 / 1024,$mem_after_alloc / 1024 / 1024));}private function formatOrder($order): array{$items = [];foreach($order->orderItems as $item){$items[] = [
 'product_name' => $item->product->name,'quantity' => $item->quantity,'unit_price' => $item->unit_price,'subtotal' => $item->quantity * $item->unit_price,];}return [
 'id' => $order->id,'status' => $order->status,'payment_status' => $order->payment_status,'total_amount' => $order->total_amount,'created_at' => $order->created_at->format('Y-m-d H:i:s'),'items' => $items,];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Processors\DailySales\NormalSalesProcessor.php =====
-namespace App\Processors\DailySales;class NormalSalesProcessor{private float $executionStartTime;private float $initialMemory;private int $totalOrders = 0;private float $totalRevenue = 0;private array $ordersData = [];public function process(string $date): array{$this->executionStartTime = microtime(true);$this->initialMemory = memory_get_usage(false);Log::info('========== Normal Sales Processing Started ==========');Log::info("Processing date:{$date}");$dayStart = Carbon::parse($date)->startOfDay();$dayEnd = Carbon::parse($date)->endOfDay();$orders = Order::where('created_at','>=',$dayStart)->where('created_at','<',$dayEnd)->with('orderItems.product')->get();if($orders->count()> 100000){Log::warning('Normal processing skipped: Orders count('.$orders->count().')exceeds maximum threshold of 100000');return [
-'total_orders' => 0,'total_revenue' => 0,'execution_time' => 0,'peak_memory' => 0,'memory_used' => 0,'skipped' => true,'reason' => 'Orders count exceeds 100000','orders_data' => [],];}foreach($orders as $order){$this->totalOrders++;$this->totalRevenue += $order->total_amount;if(count($this->ordersData)< 50){$this->ordersData[] = $this->formatOrder($order);}}$executionTime = round(microtime(true)- $this->executionStartTime,4);$peakMemory = round(memory_get_peak_usage(true)/ 1024 / 1024,4);$memoryUsed = round((memory_get_usage(false)- $this->initialMemory)/ 1024 / 1024,4);Log::info('========== Normal Processing Completed ==========');Log::info("Total Orders:{$this->totalOrders}");Log::info("Total Revenue:{$this->totalRevenue}");Log::info("Execution Time:{$executionTime}s");Log::info("Peak Memory:{$peakMemory}MB");Log::info("Memory Used:{$memoryUsed}MB");return [
-'total_orders' => $this->totalOrders,'total_revenue' => $this->totalRevenue,'execution_time' => $executionTime,'peak_memory' => $peakMemory,'memory_used' => $memoryUsed,'orders_data' => $this->ordersData,'skipped' => false,];}private function formatOrder($order): array{$items = [];foreach($order->orderItems as $item){$items[] = [
+namespace App\Processors\DailySales;class NormalSalesProcessor{private float $executionStartTime;private int $totalOrders = 0;private float $totalRevenue = 0;private array $ordersData = [];public function process(string $date): array{$this->executionStartTime = microtime(true);$mem_start_real = memory_get_usage(false);$mem_start_alloc = memory_get_usage(true);Log::info('========== Normal Sales Processing Started ==========');Log::info("Processing date:{$date}");Log::info(sprintf('Memory at START — Real: %.4f MB | Allocated: %.4f MB',$mem_start_real / 1024 / 1024,$mem_start_alloc / 1024 / 1024));$dayStart = Carbon::parse($date)->startOfDay();$dayEnd = Carbon::parse($date)->endOfDay();$mem_before_get_real = memory_get_usage(false);$mem_before_get_alloc = memory_get_usage(true);Log::info(sprintf('Memory BEFORE get()— Real: %.4f MB | Allocated: %.4f MB',$mem_before_get_real / 1024 / 1024,$mem_before_get_alloc / 1024 / 1024));$orders = Order::where('created_at','>=',$dayStart)->where('created_at','<',$dayEnd)->with('orderItems.product')->get();$mem_after_get_real = memory_get_usage(false);$mem_after_get_alloc = memory_get_usage(true);Log::info(sprintf('Memory AFTER get()— Real: %.4f MB | Allocated: %.4f MB | Delta-Real: %.4f MB',$mem_after_get_real / 1024 / 1024,$mem_after_get_alloc / 1024 / 1024,($mem_after_get_real - $mem_before_get_real)/ 1024 / 1024));Log::info("Orders loaded into memory:{$orders->count()}");if($orders->count()> 100000){Log::warning('Normal processing skipped: count > 100000');return [
+'total_orders' => 0,'total_revenue' => 0,'execution_time' => 0,'peak_memory' => 0,'memory_used' => 0,'skipped' => true,'reason' => 'Orders count exceeds 100000','orders_data' => [],];}$mem_before_loop_real = memory_get_usage(false);$mem_before_loop_alloc = memory_get_usage(true);foreach($orders as $order){$this->totalOrders++;$this->totalRevenue += $order->total_amount;if(count($this->ordersData)< 50){$this->ordersData[] = $this->formatOrder($order);}}$mem_end_real = memory_get_usage(false);$mem_end_alloc = memory_get_usage(true);$peak_real = memory_get_peak_usage(false);$peak_alloc = memory_get_peak_usage(true);$delta_total_real = $mem_end_real - $mem_start_real;$delta_get_real = $mem_after_get_real - $mem_before_get_real;$delta_loop_real = $mem_end_real - $mem_before_loop_real;$executionTime = round(microtime(true)- $this->executionStartTime,4);Log::info('========== Normal Processing Completed ==========');Log::info("Total Orders:{$this->totalOrders}");Log::info("Total Revenue:{$this->totalRevenue}");Log::info("Execution Time:{$executionTime}s");Log::info('--- Memory Statistics(Comprehensive)---');Log::info(sprintf('START — Real: %.4f MB | Alloc: %.4f MB',$mem_start_real / 1024 / 1024,$mem_start_alloc / 1024 / 1024));Log::info(sprintf('BEFORE get()— Real: %.4f MB | Alloc: %.4f MB',$mem_before_get_real / 1024 / 1024,$mem_before_get_alloc / 1024 / 1024));Log::info(sprintf('AFTER get()— Real: %.4f MB | Alloc: %.4f MB | Δ(get): %.4f MB ← تكلفة تحميل البيانات',$mem_after_get_real / 1024 / 1024,$mem_after_get_alloc / 1024 / 1024,$delta_get_real / 1024 / 1024));Log::info(sprintf('AFTER loop — Real: %.4f MB | Alloc: %.4f MB | Δ(loop): %.4f MB',$mem_end_real / 1024 / 1024,$mem_end_alloc / 1024 / 1024,$delta_loop_real / 1024 / 1024));Log::info(sprintf('PEAK(real)— %.4f MB ← الرقم الحقيقي للمقارنة',$peak_real / 1024 / 1024));Log::info(sprintf('PEAK(alloc)— %.4f MB ← ما يظهر في OS',$peak_alloc / 1024 / 1024));Log::info(sprintf('DELTA total — Real: %.4f MB | Alloc: %.4f MB',$delta_total_real / 1024 / 1024,($mem_end_alloc - $mem_start_alloc)/ 1024 / 1024));return [
+'total_orders' => $this->totalOrders,'total_revenue' => $this->totalRevenue,'execution_time' => $executionTime,'orders_data' => $this->ordersData,'skipped' => false,'memory_stats' => [
+'start_real_mb' => round($mem_start_real / 1024 / 1024,4),'start_alloc_mb' => round($mem_start_alloc / 1024 / 1024,4),'before_get_real_mb' => round($mem_before_get_real / 1024 / 1024,4),'before_get_alloc_mb' => round($mem_before_get_alloc / 1024 / 1024,4),'after_get_real_mb' => round($mem_after_get_real / 1024 / 1024,4),'after_get_alloc_mb' => round($mem_after_get_alloc / 1024 / 1024,4),'get_cost_real_mb' => round($delta_get_real / 1024 / 1024,4),'end_real_mb' => round($mem_end_real / 1024 / 1024,4),'end_alloc_mb' => round($mem_end_alloc / 1024 / 1024,4),'peak_real_mb' => round($peak_real / 1024 / 1024,4),'peak_alloc_mb' => round($peak_alloc / 1024 / 1024,4),'delta_total_real_mb' => round($delta_total_real / 1024 / 1024,4),'delta_get_real_mb' => round($delta_get_real / 1024 / 1024,4),'delta_loop_real_mb' => round($delta_loop_real / 1024 / 1024,4),],'peak_memory' => round($peak_alloc / 1024 / 1024,4),'memory_used' => round($delta_total_real / 1024 / 1024,4),];}private function formatOrder($order): array{$items = [];foreach($order->orderItems as $item){$items[] = [
 'product_name' => $item->product->name,'quantity' => $item->quantity,'unit_price' => $item->unit_price,'subtotal' => $item->quantity * $item->unit_price,];}return [
 'id' => $order->id,'status' => $order->status,'payment_status' => $order->payment_status,'total_amount' => $order->total_amount,'created_at' => $order->created_at->format('Y-m-d H:i:s'),'items' => $items,];}}
 
@@ -492,7 +499,7 @@ namespace Tests;abstract class TestCase extends BaseTestCase{}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Console\Commands\GenerateFullProjectCompact.php =====
 namespace App\Console\Commands;class GenerateFullProjectCompact extends Command{protected $signature = 'generate:exportProject';protected $description = 'Generate FullProject.php to AI';public function handle(): void{$outputPath = base_path('FullProject.php');$content = "
 $sections = [
-'Controllers' => app_path('Http/Controllers'),'Services' => app_path('Services'),'Models' => app_path('Models'),'Providers' => app_path('Providers'),'Requests' => app_path('Http/Requests'),'Helpers' => app_path('Helpers'),'Middleware' => app_path('Http/Middleware'),'Jobs' => app_path('Jobs'),'Processors' => app_path('Processors'),'Migrations' => database_path('migrations'),'Seeders' => database_path('seeders'),'Factories' => database_path('factories'),'Bootstrap' => base_path('Bootstrap'),'Config' => base_path('config'),'Routes' => base_path('routes'),'Tests' => base_path('Tests'),'Console' => app_path('Console'),'ApiCollections' => base_path('api-collections'),];foreach($sections as $sectionName => $path){if(! File::exists($path)){$this->warn("$sectionName directory not found,skipping...");continue;}$isYamlSection = $sectionName === 'ApiCollections';$files = File::allFiles($path);$files = array_filter($files,function($file)use($sectionName,$isYamlSection){if($isYamlSection){return in_array($file->getExtension(),['yaml','yml']);}if($sectionName === 'Migrations'){return $file->getExtension()=== 'php';}return $file->getExtension()== 'php';});usort($files,function($a,$b){return strcmp($a->getFilename(),$b->getFilename());});$content .= "\n
+'Controllers' => app_path('Http/Controllers'),'Services' => app_path('Services'),'Models' => app_path('Models'),'Providers' => app_path('Providers'),'Requests' => app_path('Http/Requests'),'Helpers' => app_path('Helpers'),'Middleware' => app_path('Http/Middleware'),'Jobs' => app_path('Jobs'),'Processors' => app_path('Processors'),'Migrations' => database_path('migrations'),'Seeders' => database_path('seeders'),'Factories' => database_path('factories'),'Bootstrap' => base_path('Bootstrap'),'Config' => base_path('config'),'Routes' => base_path('routes'),'Tests' => base_path('Tests'),'Console' => app_path('Console'),'Resources_views_pdf' => base_path('resources/views/pdf'),'ApiCollections' => base_path('api-collections'),];foreach($sections as $sectionName => $path){if(! File::exists($path)){$this->warn("$sectionName directory not found,skipping...");continue;}$isYamlSection = $sectionName === 'ApiCollections';$files = File::allFiles($path);$files = array_filter($files,function($file)use($sectionName,$isYamlSection){if($isYamlSection){return in_array($file->getExtension(),['yaml','yml']);}if($sectionName === 'Migrations'){return $file->getExtension()=== 'php';}return $file->getExtension()== 'php';});usort($files,function($a,$b){return strcmp($a->getFilename(),$b->getFilename());});$content .= "\n
 foreach($files as $file){$filename = str_replace(base_path().'/','',$file->getRealPath());$fileContent = File::get($file->getRealPath());if($isYamlSection){$fileContent = preg_replace('/
 $fileContent = preg_replace('/^\s*$(?:\r\n?|\n)/m','',$fileContent);}else{$fileContent = str_replace(['',''],'',$fileContent);$fileContent = preg_replace('/^use .*;/m','',$fileContent);$fileContent = preg_replace('/^declare\(.*\);/m','',$fileContent);$fileContent = preg_replace('/\/\/.*$/m','',$fileContent);$fileContent = preg_replace('/
 $fileContent = preg_replace('
@@ -500,6 +507,248 @@ $fileContent = preg_replace('/^\s*$(?:\r\n?|\n)/m','',$fileContent);$fileContent
 $content .= $fileContent."\n";}}File::put($outputPath,$content);$this->info('FullProject.php generated successfully with minified,cleaned,organized content.');}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Console\Kernel.php =====
 namespace App\Console;class Kernel extends ConsoleKernel{protected function schedule(Schedule $schedule): void{$schedule->job(new ProcessDailySalesJob)->dailyAt('00:00');}protected function commands(): void{$this->load(__DIR__.'/Commands');require base_path('routes/console.php');}}
+
+// === [Resources_views_pdf] ===
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\resources\views\pdf\daily-sales-report.blade.php =====
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Batch Processing Performance Analysis Report -{{$date}}</title>
+<style>
+*{margin: 0;padding: 0;}body{font-family: Arial,sans-serif;font-size: 12px;line-height: 1.4;color: 
+.container{width: 100%;padding: 20px;}h1{text-align: center;font-size: 24px;margin-bottom: 20px;color: 
+h2{font-size: 14px;margin-top: 20px;margin-bottom: 10px;color: 
+h3{font-size: 12px;margin-top: 15px;margin-bottom: 8px;color: 
+table{width: 100%;border-collapse: collapse;margin-top: 10px;}th{background-color: 
+td{border: 1px solid 
+tr:nth-child(even){background-color: 
+.summary-grid{display: table;width: 100%;margin-top: 10px;}.summary-item{display: table-cell;width: 25%;padding: 8px;border-right: 1px solid 
+.summary-item:last-child{border-right: none;}.summary-label{font-weight: bold;color: 
+.summary-value{font-size: 14px;color: 
+.metric-row{display: table;width: 100%;margin-top: 5px;}.metric-col{display: table-cell;width: 50%;padding: 5px;}.metric-label{font-weight: bold;color: 
+.metric-value{color: 
+.positive{color: 
+.batch-item{margin-bottom: 8px;padding: 8px;background-color: 
+.orders-table{margin-top: 15px;}.page-break{page-break-after: always;margin-top: 30px;}.executive-summary{background-color: 
+.executive-summary table{margin-top: 10px;}.executive-summary th{background-color: 
+.insights{background-color: 
+.academic-section{background-color: 
+.academic-section ul{margin-left: 20px;}</style>
+</head>
+<body>
+<div class="container">
+<!-- Header -->
+<h1>Batch Processing Performance Analysis Report</h1>{{-- ===== Sales Statistics Table ===== --}}<div class="executive-summary">
+<h2>Sales Statistics</h2>
+<table> <thead>
+<tr style="background:
+<th>Total Cost</th>
+<th>Average Order</th>
+<th>Completed</th>
+<th>Cancelled</th>
+<th>Processing</th>
+<th>Pending</th>
+</tr>
+</thead>
+<tbody>
+<tr style="text-align:center;">
+<td>{{number_format($order_stats['total_cost'],2)}}</td>
+<td>{{number_format($order_stats['average_order'],2)}}</td>
+<td>{{$order_stats['completed_orders']}}</td>
+<td>{{$order_stats['canceled_orders']}}</td>
+<td>{{$order_stats['processing_orders']}}</td>
+<td>{{$order_stats['pending_orders']}}</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Executive Summary -->
+<div class="executive-summary">
+<h2>Executive Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Normal Processing</th>
+<th>Batch Processing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orders Processed</td>
+<td>{{$normal_stats['orders_processed'] ?? 'N/A'}}</td>
+<td>{{$batch_stats['orders_processed'] ?? 'N/A'}}</td>
+</tr>
+<tr>
+<td>Execution Time</td>
+<td>{{$normal_stats['execution_time'] ?? 'N/A'}}s</td>
+<td>{{$batch_stats['execution_time'] ?? 'N/A'}}s</td>
+</tr>
+<tr>
+<td>Peak Memory Usage</td>
+<td>{{$normal_stats['peak_memory_real'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['peak_memory_real'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Total Memory Increase</td>
+<td>{{$normal_stats['memory_delta'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['memory_delta'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Processing Status</td>
+<td>{{$normal_stats['status'] ?? 'N/A'}}</td>
+<td>{{$batch_stats['status'] ?? 'N/A'}}</td>
+</tr>
+<tr>
+<td>Batch Count</td>
+<td>N/A</td>
+<td>{{$batch_stats['batch_count'] ?? 'N/A'}}</td>
+</tr>
+<tr>
+<td>Batch Size</td>
+<td>N/A</td>
+<td>{{$batch_stats['batch_size'] ?? 'N/A'}}</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Memory Consumption Analysis -->
+<h2>Memory Consumption Analysis</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Normal Processing</th>
+<th>Batch Processing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start Memory(Real)</td>
+<td>{{$normal_stats['start_memory_real'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['start_memory_real'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>End Memory(Real)</td>
+<td>{{$normal_stats['end_memory_real'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['end_memory_real'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Peak Memory(Real)</td>
+<td>{{$normal_stats['peak_memory_real'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['peak_memory_real'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Memory Increase</td>
+<td>{{$normal_stats['memory_delta'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['memory_delta'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Allocated Memory</td>
+<td>{{$normal_stats['peak_memory_allocated'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['peak_memory_allocated'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Peak Allocated Memory</td>
+<td>{{$normal_stats['peak_memory_allocated'] ?? 'N/A'}}MB</td>
+<td>{{$batch_stats['peak_memory_allocated'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Number of Batches</td>
+<td>N/A</td>
+<td>{{$batch_stats['batch_count'] ?? 'N/A'}}</td>
+</tr>
+<tr>
+<td>Average Batch Memory</td>
+<td>N/A</td>
+<td>{{$batch_stats['average_batch_memory'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Largest Batch Memory</td>
+<td>N/A</td>
+<td>{{$batch_stats['largest_batch_memory'] ?? 'N/A'}}MB</td>
+</tr>
+<tr>
+<td>Smallest Batch Memory</td>
+<td>N/A</td>
+<td>{{$batch_stats['smallest_batch_memory'] ?? 'N/A'}}MB</td>
+</tr>
+</tbody>
+</table>
+<!-- Performance Insights -->
+<div class="insights">
+<h2>Performance Insights</h2>
+<p>
+@if(isset($comparison['memory_reduction_percent'])&& $comparison['memory_reduction_percent'] > 0)Normal Processing loaded all orders into memory at once,causing very high memory usage of{{$normal_stats['peak_memory_real'] ?? 'N/A'}}MB.
+Batch Processing kept memory stable by processing orders in chunks,reducing peak memory to{{$batch_stats['peak_memory_real'] ?? 'N/A'}}MB.
+This represents a{{$comparison['memory_reduction_percent']}}% reduction in memory usage.
+@else
+Batch Processing maintained efficient memory usage through chunked processing.
+@endif
+</p>
+<p>
+@if(isset($comparison['speed_improvement_percent']))@if($comparison['speed_improvement_percent'] > 0)Batch Processing was{{$comparison['speed_improvement_percent']}}% faster than Normal Processing.
+@elseif($comparison['speed_improvement_percent'] < 0)Normal Processing was faster in this case,but Batch Processing provides better scalability.
+@else
+Execution times were comparable between both methods.
+@endif
+@endif
+</p>
+<p>
+System scalability improved significantly using chunked processing,allowing handling of larger datasets without memory exhaustion.
+</p>
+</div>
+<!-- Performance Percentage -->
+@if(isset($comparison['memory_reduction_percent']))<h2>Performance Analysis</h2>
+<p>Memory Reduction %:{{$comparison['memory_reduction_percent']}}%</p>
+<p>Batch Processing was{{$comparison['speed_improvement_percent']}}% faster than Normal Processing.</p>
+@endif
+</div>
+</body>
+</html>
+
+// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\resources\views\pdf\invoice.blade.php =====
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Invoice</title>
+<style>
+body{font-family: sans-serif;margin: 30px;}h1{text-align: center;}.section{margin-bottom: 20px;}table{width: 100%;border-collapse: collapse;}table,th,td{border: 1px solid black;}th,td{padding: 10px;text-align: left;}</style>
+</head>
+<body>
+<h1>Invoice</h1>
+<div class="section">
+<strong>Invoice Number:</strong>{{$invoice_number}}<br>
+<strong>Purchase Date:</strong>{{$purchase_date}}<br>
+<strong>Customer Name:</strong>{{$customer_name}}<br>
+<strong>Shipping Address:</strong>{{$shipping_address}}<br>
+<strong>Payment Status:</strong>{{$payment_status}}</div>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Quantity</th>
+<th>Unit Price</th>
+<th>Subtotal</th>
+</tr>
+</thead>
+<tbody>
+@foreach($items as $item)<tr>
+<td>{{$item['name']}}</td>
+<td>{{$item['quantity']}}</td>
+<td>${{$item['unit_price']}}</td>
+<td>${{$item['subtotal']}}</td>
+</tr>
+@endforeach
+</tbody>
+</table>
+<br>
+<strong>Total Amount:</strong>${{$total_amount}}</body>
+</html>
+
 
 // === [ApiCollections] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\api-collections\Category\Create Category.yml =====

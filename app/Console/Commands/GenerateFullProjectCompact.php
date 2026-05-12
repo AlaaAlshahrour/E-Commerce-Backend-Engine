@@ -41,6 +41,7 @@ class GenerateFullProjectCompact extends Command
             'Routes' => base_path('routes'),
             'Tests' => base_path('Tests'),
             'Console' => app_path('Console'),
+            'Resources_views_pdf' => base_path('resources/views/pdf'),
             //    'Resources_view' => base_path('resources/views'),
             //    'Resources_view_layouts' => base_path('resources/views/layouts'),
             //    'Resources_view_layouts_main' => base_path('resources/views/layouts_main'),

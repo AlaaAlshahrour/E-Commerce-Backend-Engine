@@ -10,8 +10,6 @@ class NormalSalesProcessor
 {
     private float $executionStartTime;
 
-    private float $initialMemory;
-
     private int $totalOrders = 0;
 
     private float $totalRevenue = 0;
@@ -21,25 +19,58 @@ class NormalSalesProcessor
     public function process(string $date): array
     {
         $this->executionStartTime = microtime(true);
-        $this->initialMemory = memory_get_usage(false);
+
+        // ════════════════════════════════════════════════════════════
+        //  قياسات الذاكرة — البداية (قبل أي شيء)
+        // ════════════════════════════════════════════════════════════
+        $mem_start_real = memory_get_usage(false);
+        $mem_start_alloc = memory_get_usage(true);
 
         Log::info('========== Normal Sales Processing Started ==========');
         Log::info("Processing date: {$date}");
+        Log::info(sprintf(
+            'Memory at START — Real: %.4f MB | Allocated: %.4f MB',
+            $mem_start_real / 1024 / 1024,
+            $mem_start_alloc / 1024 / 1024
+        ));
 
         $dayStart = Carbon::parse($date)->startOfDay();
         $dayEnd = Carbon::parse($date)->endOfDay();
+
+        // ════════════════════════════════════════════════════════════
+        //  نقطة القياس: قبل get() مباشرةً
+        //  هذا السطر هو الذي يُحمّل كل الـ orders + relations دفعةً واحدة
+        // ════════════════════════════════════════════════════════════
+        $mem_before_get_real = memory_get_usage(false);
+        $mem_before_get_alloc = memory_get_usage(true);
+
+        Log::info(sprintf(
+            'Memory BEFORE get() — Real: %.4f MB | Allocated: %.4f MB',
+            $mem_before_get_real / 1024 / 1024,
+            $mem_before_get_alloc / 1024 / 1024
+        ));
 
         $orders = Order::where('created_at', '>=', $dayStart)
             ->where('created_at', '<', $dayEnd)
             ->with('orderItems.product')
             ->get();
 
-        // Guard clause: Prevent processing if orders exceed 100k
+        // ════════════════════════════════════════════════════════════
+        //  نقطة القياس: بعد get() — هنا نرى التأثير الحقيقي لتحميل البيانات
+        // ════════════════════════════════════════════════════════════
+        $mem_after_get_real = memory_get_usage(false);
+        $mem_after_get_alloc = memory_get_usage(true);
+
+        Log::info(sprintf(
+            'Memory AFTER get() — Real: %.4f MB | Allocated: %.4f MB | Delta-Real: %.4f MB',
+            $mem_after_get_real / 1024 / 1024,
+            $mem_after_get_alloc / 1024 / 1024,
+            ($mem_after_get_real - $mem_before_get_real) / 1024 / 1024
+        ));
+        Log::info("Orders loaded into memory: {$orders->count()}");
+
         if ($orders->count() > 100000) {
-            Log::warning(
-                'Normal processing skipped: Orders count ('.$orders->count()
-                .') exceeds maximum threshold of 100000'
-            );
+            Log::warning('Normal processing skipped: count > 100000');
 
             return [
                 'total_orders' => 0,
@@ -53,37 +84,106 @@ class NormalSalesProcessor
             ];
         }
 
+        // ════════════════════════════════════════════════════════════
+        //  نقطة القياس: قبل المعالجة (الـ foreach)
+        // ════════════════════════════════════════════════════════════
+        $mem_before_loop_real = memory_get_usage(false);
+        $mem_before_loop_alloc = memory_get_usage(true);
+
         foreach ($orders as $order) {
             $this->totalOrders++;
             $this->totalRevenue += $order->total_amount;
-
-            // Keep only first 50 orders in memory
             if (count($this->ordersData) < 50) {
                 $this->ordersData[] = $this->formatOrder($order);
             }
         }
 
-        $executionTime = round(microtime(true) - $this->executionStartTime, 4);
-        $peakMemory = round(memory_get_peak_usage(true) / 1024 / 1024, 4);
-        $memoryUsed = round((memory_get_usage(false) - $this->initialMemory) / 1024 / 1024, 4);
+        // ════════════════════════════════════════════════════════════
+        //  قياسات الذاكرة — النهاية (بعد اكتمال كل المعالجة)
+        // ════════════════════════════════════════════════════════════
+        $mem_end_real = memory_get_usage(false);
+        $mem_end_alloc = memory_get_usage(true);
 
+        // الذروة الحقيقية — أعلى نقطة وصل إليها PHP خلال كامل التنفيذ
+        $peak_real = memory_get_peak_usage(false);   // ← الرقم الحقيقي
+        $peak_alloc = memory_get_peak_usage(true);    // ← ما يظهر في OS monitor
+
+        // الفروقات الصافية
+        $delta_total_real = $mem_end_real - $mem_start_real;   // إجمالي ما استُهلك
+        $delta_get_real = $mem_after_get_real - $mem_before_get_real;  // تكلفة get() وحده
+        $delta_loop_real = $mem_end_real - $mem_before_loop_real;       // تكلفة الـ foreach
+
+        $executionTime = round(microtime(true) - $this->executionStartTime, 4);
+
+        // ════════════════════════════════════════════════════════════
+        //  تسجيل كامل في الـ Log
+        // ════════════════════════════════════════════════════════════
         Log::info('========== Normal Processing Completed ==========');
         Log::info("Total Orders: {$this->totalOrders}");
         Log::info("Total Revenue: {$this->totalRevenue}");
         Log::info("Execution Time: {$executionTime}s");
-        Log::info("Peak Memory: {$peakMemory}MB");
-        Log::info("Memory Used: {$memoryUsed}MB");
+        Log::info('--- Memory Statistics (Comprehensive) ---');
+        Log::info(sprintf('START       — Real: %.4f MB | Alloc: %.4f MB',
+            $mem_start_real / 1024 / 1024, $mem_start_alloc / 1024 / 1024));
+        Log::info(sprintf('BEFORE get()— Real: %.4f MB | Alloc: %.4f MB',
+            $mem_before_get_real / 1024 / 1024, $mem_before_get_alloc / 1024 / 1024));
+        Log::info(sprintf('AFTER  get()— Real: %.4f MB | Alloc: %.4f MB | Δ(get): %.4f MB  ← تكلفة تحميل البيانات',
+            $mem_after_get_real / 1024 / 1024,
+            $mem_after_get_alloc / 1024 / 1024,
+            $delta_get_real / 1024 / 1024));
+        Log::info(sprintf('AFTER  loop — Real: %.4f MB | Alloc: %.4f MB | Δ(loop): %.4f MB',
+            $mem_end_real / 1024 / 1024,
+            $mem_end_alloc / 1024 / 1024,
+            $delta_loop_real / 1024 / 1024));
+        Log::info(sprintf('PEAK (real) — %.4f MB  ← الرقم الحقيقي للمقارنة',
+            $peak_real / 1024 / 1024));
+        Log::info(sprintf('PEAK (alloc)— %.4f MB  ← ما يظهر في OS',
+            $peak_alloc / 1024 / 1024));
+        Log::info(sprintf('DELTA total — Real: %.4f MB | Alloc: %.4f MB',
+            $delta_total_real / 1024 / 1024,
+            ($mem_end_alloc - $mem_start_alloc) / 1024 / 1024));
 
         return [
             'total_orders' => $this->totalOrders,
             'total_revenue' => $this->totalRevenue,
             'execution_time' => $executionTime,
-            'peak_memory' => $peakMemory,
-            'memory_used' => $memoryUsed,
             'orders_data' => $this->ordersData,
             'skipped' => false,
+
+            // ── القياسات الشاملة ──────────────────────────────────────────
+            'memory_stats' => [
+                // نقاط قياس مرتّبة زمنياً
+                'start_real_mb' => round($mem_start_real / 1024 / 1024, 4),
+                'start_alloc_mb' => round($mem_start_alloc / 1024 / 1024, 4),
+
+                'before_get_real_mb' => round($mem_before_get_real / 1024 / 1024, 4),
+                'before_get_alloc_mb' => round($mem_before_get_alloc / 1024 / 1024, 4),
+
+                // تكلفة get() = الرقم الأهم للمقارنة مع Batch
+                'after_get_real_mb' => round($mem_after_get_real / 1024 / 1024, 4),
+                'after_get_alloc_mb' => round($mem_after_get_alloc / 1024 / 1024, 4),
+                'get_cost_real_mb' => round($delta_get_real / 1024 / 1024, 4),
+
+                'end_real_mb' => round($mem_end_real / 1024 / 1024, 4),
+                'end_alloc_mb' => round($mem_end_alloc / 1024 / 1024, 4),
+
+                // الذروة — القيمة الأهم
+                'peak_real_mb' => round($peak_real / 1024 / 1024, 4),
+                'peak_alloc_mb' => round($peak_alloc / 1024 / 1024, 4),
+
+                // الفروقات الصافية
+                'delta_total_real_mb' => round($delta_total_real / 1024 / 1024, 4),
+                'delta_get_real_mb' => round($delta_get_real / 1024 / 1024, 4),
+                'delta_loop_real_mb' => round($delta_loop_real / 1024 / 1024, 4),
+            ],
+
+            // للتوافق مع الكود القديم
+            'peak_memory' => round($peak_alloc / 1024 / 1024, 4),
+            'memory_used' => round($delta_total_real / 1024 / 1024, 4),
         ];
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     private function formatOrder($order): array
     {

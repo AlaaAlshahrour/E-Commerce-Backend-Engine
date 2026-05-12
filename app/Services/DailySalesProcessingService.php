@@ -60,7 +60,9 @@ class DailySalesProcessingService
      */
     private function processCompare(string $date): array
     {
-        // Run normal first
+
+        $batchResult = $this->chunkedProcessor->process($date);
+
         $normalResult = $this->normalProcessor->process($date);
 
         // Skip comparison if normal processing was skipped
@@ -74,9 +76,6 @@ class DailySalesProcessingService
                 'normal_skipped' => true,
             ];
         }
-
-        // Then run batch
-        $batchResult = $this->chunkedProcessor->process($date);
 
         // Calculate comparison metrics
         $comparison = [
@@ -94,13 +93,45 @@ class DailySalesProcessingService
             'batch_peak_memory' => $batchResult['peak_memory'],
         ];
 
+        // Calculate additional batch statistics
+        $batchStats = $this->calculateBatchStatistics($batchResult);
+
         return [
             'mode' => ProcessingMode::Compare->value,
             'date' => $date,
             'normal_result' => $normalResult,
             'batch_result' => $batchResult,
             'comparison' => $comparison,
+            'batch_stats' => $batchStats,
             'normal_skipped' => false,
+        ];
+    }
+
+    /**
+     * Calculate additional batch statistics
+     */
+    private function calculateBatchStatistics(array $batchResult): array
+    {
+        $batchesMetrics = $batchResult['batches_metrics'] ?? [];
+
+        if (empty($batchesMetrics)) {
+            return [
+                'average_batch_memory' => 0,
+                'largest_batch_memory' => 0,
+                'smallest_batch_memory' => 0,
+                'batch_count' => 0,
+                'batch_size' => 0,
+            ];
+        }
+
+        $memoryDeltas = array_column($batchesMetrics, 'memory_delta_real_mb');
+
+        return [
+            'average_batch_memory' => round(array_sum($memoryDeltas) / count($memoryDeltas), 4),
+            'largest_batch_memory' => round(max($memoryDeltas), 4),
+            'smallest_batch_memory' => round(min($memoryDeltas), 4),
+            'batch_count' => count($batchesMetrics),
+            'batch_size' => $batchesMetrics[0]['orders_count'] ?? 0, // Assuming uniform batch size
         ];
     }
 }
