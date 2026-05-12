@@ -1,0 +1,27 @@
+=== 50 Users ===
+Running 30s test @ http://localhost:8080/api/products
+  2 threads and 50 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   109.62ms   29.90ms 265.85ms   73.37%
+    Req/Sec   228.86     52.93   343.00     64.88%
+  13678 requests in 30.05s, 44.66MB read
+Requests/sec:    455.21
+Transfer/sec:      1.49MB
+=== 100 Users ===
+Running 30s test @ http://localhost:8080/api/products
+  4 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   213.10ms   29.68ms 353.03ms   68.50%
+    Req/Sec   117.39     25.39   212.00     70.12%
+  14043 requests in 30.04s, 45.86MB read
+Requests/sec:    467.52
+Transfer/sec:      1.53MB
+=== 200 Users ===
+Running 30s test @ http://localhost:8080/api/products
+  4 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   429.48ms   39.98ms 669.26ms   74.07%
+    Req/Sec   116.45     29.31   240.00     71.42%
+  13889 requests in 30.06s, 45.35MB read
+Requests/sec:    462.05
+Transfer/sec:      1.51MB

@@ -22,6 +22,7 @@ class CartRepository
 
     public function addProductToCart(Cart $cart, int $productId, int $quantity): void
     {
+//        $cart->cartItems()->create(['product_id' => $productId, 'quantity' => $quantity]);
         DB::table('cart_items')->insert([
             'cart_id' => $cart->id,
             'product_id' => $productId,
@@ -29,6 +30,7 @@ class CartRepository
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
     }
 
     public function getCartProducts(Cart $cart)
@@ -96,4 +98,5 @@ class CartRepository
             ->where('product_id', $productId)
             ->update(['quantity' => $quantity]);
     }
+
 }

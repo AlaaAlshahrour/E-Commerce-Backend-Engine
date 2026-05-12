@@ -9,8 +9,9 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\DailySalesReportController;
 use App\Services\OrderService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Controllers\NodeController;
 use Illuminate\Support\Facades\Route;
 
 // //////////   Auth   /////////////////////
@@ -22,7 +23,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 });
-
+Route::get('/test', function () {
+    return response()->json([
+        'working' => true
+    ]);
+});
 // //////   Product & Category   //////////////////
 
 Route::middleware('throttle:public-api')->group(function () {
@@ -49,7 +54,7 @@ Route::middleware(['auth:sanctum', 'throttle:cart'])->prefix('cart')->group(func
     Route::get('/', [CartController::class, 'getCartProducts']);
     Route::delete('/clear', [CartController::class, 'deleteAll']);
     Route::delete('/remove', [CartController::class, 'deleteProducts']);
-    Route::patch('/update/{product_id}', [CartController::class, 'update']);
+    Route::post('/update/{product_id}', [CartController::class, 'update']);
 });
 
 // //////   inventory   //////////////////
@@ -62,7 +67,7 @@ Route::middleware(['auth:sanctum', 'throttle:inventory-update'])->prefix('invent
 // //////   orders   //////////////////
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::get('/', [OrderController::class, 'index'])->middleware('throttle:authenticated-api');
-    Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('throttle:checkout');
+    Route::post('/checkout', [OrderController::class, 'checkout']);//->middleware('throttle:checkout');
     Route::get('/{order}', [OrderController::class, 'show'])->middleware('throttle:authenticated-api');
     Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->middleware([
         'role:Admin',
@@ -70,7 +75,8 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     ]);
 });
 
-// //////   wallet   //////////////////
+
+////////   wallet   //////////////////
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet', [WalletController::class, 'show'])->middleware('throttle:authenticated-api');
     Route::post('/wallet/topup', [WalletController::class, 'topUp'])->middleware('throttle:wallet');
@@ -138,4 +144,26 @@ Route::get('/test-checkout', function () {
     return $service->checkout([
         'shipping_address' => 'Damascus',
     ]);
+});
+
+Route::get('/node-info', function () {
+    return response()->json([
+        'hostname' => gethostname(),
+        'server_id' => env('SERVER_ID', 'unknown'),
+        'server_ip' => request()->server('SERVER_ADDR'),
+        'timestamp' => now()->toISOString(),
+        'php_version' => PHP_VERSION,
+    ]);
+});
+
+
+Route::prefix('nodes')->group(function () {
+
+    Route::get('/status', [NodeController::class, 'status']);
+
+    Route::post('/{node}/stop', [NodeController::class, 'stop']);
+
+    Route::post('/{node}/start', [NodeController::class, 'start']);
+
+    Route::post('/restore-all', [NodeController::class, 'restoreAll']);
 });

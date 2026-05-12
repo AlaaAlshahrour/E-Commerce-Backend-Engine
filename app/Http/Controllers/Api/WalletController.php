@@ -37,6 +37,7 @@ class WalletController extends Controller
      */
     public function topUp(TopUpRequest $request)
     {
+        $data = $request->validated();
         $user = $request->user();
         $wallet = $user->wallet;
 
@@ -52,8 +53,8 @@ class WalletController extends Controller
             return ResponseHelper::jsonResponse([], 'Wallet not found or inactive', 422);
         }
 
-        DB::transaction(function () use ($wallet, $request) {
-            $amount = $request->amount;
+        DB::transaction(function () use ($wallet, $request,$data) {
+            $amount = $data['amount'];
             $balanceBefore = $wallet->balance;
 
             $wallet->increment('balance', $amount);

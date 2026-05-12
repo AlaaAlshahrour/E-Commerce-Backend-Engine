@@ -30,9 +30,9 @@ class InventoryRepository
             ->first();
     }
 
-    public function updateQuantity(int $productId, int $quantity): bool
+    public function incrementQuantity(int $productId, int $quantity): bool
     {
         return Inventory::where('product_id', $productId)
-            ->update(['quantity' => $quantity]);
+            ->increment('quantity' , $quantity);
     }
 }

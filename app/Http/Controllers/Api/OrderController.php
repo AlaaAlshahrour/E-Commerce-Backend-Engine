@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CheckoutRequest;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -15,22 +17,25 @@ class OrderController extends Controller
     {
         $result = $this->orderService->getUserOrders();
 
-        if (! $result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '', 404);
+        if (!$result['success']) {
+            return ResponseHelper::jsonResponse(null,$result['message'],  404, false);
         }
 
-        return response()->json(['data' => $result['data']]);
+
+        return ResponseHelper::jsonResponse($result['data'],$result['message']);
     }
+
 
     public function show(int $id)
     {
         $result = $this->orderService->getOrderById($id);
 
-        if (! $result['success']) {
-            return ResponseHelper::jsonResponse($result['message'], '', 404);
+        if (!$result['success']) {
+            return ResponseHelper::jsonResponse(null,$result['message'],  404, false);
         }
 
-        return response()->json(['data' => $result['data']]);
+
+        return ResponseHelper::jsonResponse($result['data'],$result['message']);
     }
 
     public function updateStatus(int $id, Request $request)
@@ -41,36 +46,26 @@ class OrderController extends Controller
 
         $result = $this->orderService->updateStatus($id, $request->input('status'));
 
-        if (! $result['success']) {
-            return response()->json(['message' => $result['message']], 422);
+        if (!$result['success']) {
+            ResponseHelper::jsonResponse(null, $result['message'], 422, false);
         }
 
-        return response()->json([
-            'message' => $result['message'],
-            'data' => $result['data'],
-        ]);
+        return ResponseHelper::jsonResponse($result['data'], $result['message']);
     }
 
-    public function checkout(Request $request)
+    public function checkout(CheckoutRequest $request)
     {
-        $request->validate([
-            'shipping_address' => 'required|string|min:5',
-        ]);
+        $data = $request->validated();
+        $safe = $request->query('safe') == "1";
 
-        $result = $this->orderService->checkout($request->only([
-            'shipping_address',
-        ]));
+        $result = $safe ? $this->orderService->checkoutSafe($data)
+            : $this->orderService->checkoutUnsafe($data);
 
-        if (! $result['success']) {
-            return response()->json([
-                'message' => $result['message'],
-                'data' => $result['data'] ?? [],
-            ], 422);
+        if (!$result['success']) {
+            $message = isset($result['message']) ? $result['message'] : 'An error occurred';
+            return ResponseHelper::jsonResponse(null, $message, 422, false);
         }
 
-        return response()->json([
-            'message' => $result['message'],
-            'data' => $result['data'],
-        ], 201);
+        return ResponseHelper::jsonResponse($result['data'], $result['message'], 201);
     }
 }

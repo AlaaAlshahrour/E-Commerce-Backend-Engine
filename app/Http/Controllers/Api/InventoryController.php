@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
-    protected InventoryService $inventoryService;
+    protected $inventoryService;
 
     public function __construct(InventoryService $inventoryService)
     {
@@ -21,10 +21,10 @@ class InventoryController extends Controller
         $result = $this->inventoryService->getAll();
 
         if (isset($result['message'])) {
-            return ResponseHelper::jsonResponse($result['message']);
+            return ResponseHelper::jsonResponse(null ,$result['message'],404, false);
         }
 
-        return response()->json(['data' => $result['data']]);
+        return ResponseHelper::jsonResponse($result['data'], '',201);
     }
 
     public function show(int $productId)
@@ -32,10 +32,9 @@ class InventoryController extends Controller
         $result = $this->inventoryService->getByProductId($productId);
 
         if (isset($result['message'])) {
-            return ResponseHelper::jsonResponse($result['message']);
+            return ResponseHelper::jsonResponse(null ,$result['message'],404, false);
         }
-
-        return response()->json(['data' => $result['data']]);
+        return ResponseHelper::jsonResponse($result['data']);
     }
 
     public function update(int $productId, Request $request)
@@ -43,13 +42,17 @@ class InventoryController extends Controller
         $request->validate([
             'quantity' => 'required|integer|min:0',
         ]);
+        $safe = $request->query('safe') == "1";
+        $result = $safe ? $this->inventoryService->updateQuantitySafe($productId, $request->input('quantity'))
+            :
+            $this->inventoryService->updateQuantityUnsafe($productId, $request->input('quantity'));
 
-        $result = $this->inventoryService->updateQuantity($productId, $request->input('quantity'));
-
-        if (! $result['success']) {
-            return ResponseHelper::jsonResponse('', $result['message'], 404);
+        if (!$result['success']) {
+            return ResponseHelper::jsonResponse(null, $result['message'], 404);
         }
 
-        return ResponseHelper::jsonResponse($result['message']);
+        return ResponseHelper::jsonResponse([],$result['message']);
     }
+
+
 }
