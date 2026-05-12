@@ -21,7 +21,7 @@ class OrderSeeder extends Seeder
                 'status' => 'Completed',
                 'total_amount' => rand(50, 500),
                 'shipping_address' => 'Damascus',
-                'created_at' => now()->subDays(rand(0, 2)),
+                'created_at' => now(),
                 'updated_at' => now(),
             ];
 

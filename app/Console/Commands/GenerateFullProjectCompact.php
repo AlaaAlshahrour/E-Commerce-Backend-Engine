@@ -32,6 +32,7 @@ class GenerateFullProjectCompact extends Command
             'Helpers' => app_path('Helpers'),
             'Middleware' => app_path('Http/Middleware'),
             'Jobs' => app_path('Jobs'),
+            'Processors' => app_path('Processors'),
             'Migrations' => database_path('migrations'),
             'Seeders' => database_path('seeders'),
             'Factories' => database_path('factories'),

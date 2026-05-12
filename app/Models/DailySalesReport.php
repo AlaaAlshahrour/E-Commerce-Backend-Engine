@@ -11,6 +11,7 @@ class DailySalesReport extends Model
         'total_orders',
         'total_revenue',
         'pdf_path',
+        'processing_mode',
         'export_start_time',
         'export_end_time',
     ];

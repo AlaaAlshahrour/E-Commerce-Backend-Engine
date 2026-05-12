@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProcessingMode;
 use App\Jobs\ProcessDailySalesJob;
 use App\Models\DailySalesReport;
 use App\Models\Inventory;
@@ -9,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\DailySalesProcessingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -45,7 +47,7 @@ class ProcessDailySalesJobTest extends TestCase
 
         // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
-        $job->handle();
+        $job->handle(app(DailySalesProcessingService::class));
 
         // التحقق من إنشاء التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
@@ -69,7 +71,7 @@ class ProcessDailySalesJobTest extends TestCase
 
         // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
-        $job->handle();
+        $job->handle(app(DailySalesProcessingService::class));
 
         // التحقق من عدم تغيير التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
@@ -159,12 +161,189 @@ class ProcessDailySalesJobTest extends TestCase
 
         // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
-        $job->handle();
+        $job->handle(app(DailySalesProcessingService::class));
 
         // التحقق من التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
         $this->assertNotNull($report);
         $this->assertEquals(4, $report->total_orders);
         $this->assertEquals(250.00, $report->total_revenue);
+    }
+
+    // Tests for new refactored code
+
+    public function test_processing_mode_enum_values(): void
+    {
+        $this->assertEquals('batch', ProcessingMode::Batch->value);
+        $this->assertEquals('normal', ProcessingMode::Normal->value);
+        $this->assertEquals('compare', ProcessingMode::Compare->value);
+    }
+
+    public function test_job_dispatch_with_batch_mode(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create();
+
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Completed',
+            'payment_status' => 'paid',
+            'total_amount' => 150.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $job = new ProcessDailySalesJob(Carbon::yesterday()->toDateString(), ProcessingMode::Batch);
+        $job->handle(app(DailySalesProcessingService::class));
+
+        $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
+        $this->assertNotNull($report);
+        $this->assertEquals('batch', $report->processing_mode);
+    }
+
+    public function test_job_dispatch_with_normal_mode(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create();
+
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Completed',
+            'payment_status' => 'paid',
+            'total_amount' => 150.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $job = new ProcessDailySalesJob(Carbon::yesterday()->toDateString(), ProcessingMode::Normal);
+        $job->handle(app(DailySalesProcessingService::class));
+
+        $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
+        $this->assertNotNull($report);
+        $this->assertEquals('normal', $report->processing_mode);
+    }
+
+    public function test_job_dispatch_with_compare_mode(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create();
+
+        Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'Completed',
+            'payment_status' => 'paid',
+            'total_amount' => 150.00,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $job = new ProcessDailySalesJob(Carbon::yesterday()->toDateString(), ProcessingMode::Compare);
+        $job->handle(app(DailySalesProcessingService::class));
+
+        $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
+        $this->assertNotNull($report);
+        $this->assertEquals('compare', $report->processing_mode);
+    }
+
+    public function test_processing_service_batch_returns_correct_structure(): void
+    {
+        $user = User::factory()->create();
+
+        Order::factory(25)->create([
+            'user_id' => $user->id,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $service = app(DailySalesProcessingService::class);
+        $result = $service->process(Carbon::yesterday()->toDateString(), ProcessingMode::Batch);
+
+        $this->assertEquals(ProcessingMode::Batch->value, $result['mode']);
+        $this->assertArrayHasKey('batch_result', $result);
+        $this->assertArrayHasKey('total_orders', $result['batch_result']);
+        $this->assertArrayHasKey('total_revenue', $result['batch_result']);
+        $this->assertArrayHasKey('execution_time', $result['batch_result']);
+        $this->assertArrayHasKey('peak_memory', $result['batch_result']);
+        $this->assertArrayHasKey('memory_used', $result['batch_result']);
+        $this->assertArrayHasKey('batches_metrics', $result['batch_result']);
+        $this->assertArrayHasKey('orders_data', $result['batch_result']);
+    }
+
+    public function test_processing_service_normal_returns_correct_structure(): void
+    {
+        $user = User::factory()->create();
+
+        Order::factory(25)->create([
+            'user_id' => $user->id,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $service = app(DailySalesProcessingService::class);
+        $result = $service->process(Carbon::yesterday()->toDateString(), ProcessingMode::Normal);
+
+        $this->assertEquals(ProcessingMode::Normal->value, $result['mode']);
+        $this->assertArrayHasKey('normal_result', $result);
+        $this->assertArrayHasKey('total_orders', $result['normal_result']);
+        $this->assertArrayHasKey('execution_time', $result['normal_result']);
+        $this->assertArrayHasKey('peak_memory', $result['normal_result']);
+        $this->assertArrayHasKey('orders_data', $result['normal_result']);
+    }
+
+    public function test_orders_sample_limited_to_50(): void
+    {
+        $user = User::factory()->create();
+
+        Order::factory(75)->create([
+            'user_id' => $user->id,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $service = app(DailySalesProcessingService::class);
+        $result = $service->process(Carbon::yesterday()->toDateString(), ProcessingMode::Batch);
+
+        $ordersData = $result['batch_result']['orders_data'];
+        $this->assertLessThanOrEqual(50, count($ordersData));
+    }
+
+    public function test_batch_processor_tracks_metrics_correctly(): void
+    {
+        $user = User::factory()->create();
+
+        Order::factory(1025)->create([
+            'user_id' => $user->id,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $service = app(DailySalesProcessingService::class);
+        $result = $service->process(Carbon::yesterday()->toDateString(), ProcessingMode::Batch);
+
+        $batchResult = $result['batch_result'];
+        $this->assertGreaterThan(1, $batchResult['batches_count']);
+        $this->assertNotEmpty($batchResult['batches_metrics']);
+
+        foreach ($batchResult['batches_metrics'] as $batch) {
+            $this->assertArrayHasKey('batch_number', $batch);
+            $this->assertArrayHasKey('orders_count', $batch);
+            $this->assertArrayHasKey('execution_time', $batch);
+            $this->assertArrayHasKey('memory_before', $batch);
+            $this->assertArrayHasKey('memory_after', $batch);
+        }
+    }
+
+    public function test_performance_metrics_are_measured_correctly(): void
+    {
+        $user = User::factory()->create();
+
+        Order::factory(25)->create([
+            'user_id' => $user->id,
+            'created_at' => Carbon::yesterday(),
+        ]);
+
+        $service = app(DailySalesProcessingService::class);
+        $result = $service->process(Carbon::yesterday()->toDateString(), ProcessingMode::Batch);
+
+        $metrics = $result['batch_result'];
+
+        $this->assertIsFloat($metrics['execution_time']);
+        $this->assertIsFloat($metrics['peak_memory']);
+        $this->assertIsFloat($metrics['memory_used']);
+        $this->assertGreaterThanOrEqual(0, $metrics['execution_time']);
+        $this->assertGreaterThanOrEqual(0, $metrics['peak_memory']);
     }
 }
