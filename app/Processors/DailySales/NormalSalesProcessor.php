@@ -93,9 +93,7 @@ class NormalSalesProcessor
         foreach ($orders as $order) {
             $this->totalOrders++;
             $this->totalRevenue += $order->total_amount;
-            if (count($this->ordersData) < 50) {
-                $this->ordersData[] = $this->formatOrder($order);
-            }
+            $this->ordersData[] = $this->formatOrder($order);
         }
 
         // ════════════════════════════════════════════════════════════

@@ -153,11 +153,11 @@
                     <td>{{ $normal_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>
                     <td>{{ $batch_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>
                 </tr>
-                <tr>
-                    <td>Peak Allocated Memory</td>
-                    <td>{{ $normal_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>
-                    <td>{{ $batch_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>
-                </tr>
+{{--                <tr>--}}
+{{--                    <td>Peak Allocated Memory</td>--}}
+{{--                    <td>{{ $normal_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>--}}
+{{--                    <td>{{ $batch_stats['peak_memory_allocated'] ?? 'N/A' }} MB</td>--}}
+{{--                </tr>--}}
                 <tr>
                     <td>Number of Batches</td>
                     <td>N/A</td>
@@ -180,6 +180,18 @@
                 </tr>
             </tbody>
         </table>
+
+        <!-- Performance Percentage -->
+        @if(isset($comparison['memory_reduction_percent']))
+            <h2>Performance Analysis</h2>
+            <p>Memory Reduction %: {{ $comparison['memory_reduction_percent'] }}%</p>
+            <p>Batch Processing was {{ $comparison['speed_improvement_percent'] }}% faster than Normal Processing.</p>
+            <p>.</p>
+            <p>.</p>
+            <p>.</p>
+            <p>.</p>
+            <p>.</p>
+        @endif
 
         <!-- Performance Insights -->
         <div class="insights">
@@ -208,13 +220,6 @@
                 System scalability improved significantly using chunked processing, allowing handling of larger datasets without memory exhaustion.
             </p>
         </div>
-
-        <!-- Performance Percentage -->
-        @if(isset($comparison['memory_reduction_percent']))
-        <h2>Performance Analysis</h2>
-        <p>Memory Reduction %: {{ $comparison['memory_reduction_percent'] }}%</p>
-        <p>Batch Processing was {{ $comparison['speed_improvement_percent'] }}% faster than Normal Processing.</p>
-        @endif
 
     </div>
 </body>

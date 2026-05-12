@@ -17,7 +17,10 @@ class ChunkedSalesProcessor
     private array $batchesMetrics = [];
 
     private int $batchCounter = 0;
-
+    private int $completedOrders  = 0;
+    private int $canceledOrders   = 0;
+    private int $pendingOrders    = 0;
+    private int $processingOrders = 0;
     public function process(string $date): array
     {
         $executionStartTime = microtime(true);
@@ -131,9 +134,7 @@ class ChunkedSalesProcessor
         foreach ($orders as $order) {
             $this->totalOrders++;
             $this->totalRevenue += $order->total_amount;
-            if (count($this->ordersData) < 50) {
-                $this->ordersData[] = $this->formatOrder($order);
-            }
+            $this->ordersData[] = $this->formatOrder($order);
         }
 
         $batchExecutionTime = round(microtime(true) - $batchStartTime, 4);

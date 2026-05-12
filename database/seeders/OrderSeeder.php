@@ -14,11 +14,26 @@ class OrderSeeder extends Seeder
     {
         $rows = [];
 
+        function getRandomStatus()
+        {
+            $rand = rand(1, 100);
+
+            if ($rand <= 50) {
+                return 'Completed';
+            } elseif ($rand <= 75) {
+                return 'Processing';
+            } elseif ($rand <= 90) {
+                return 'Pending';
+            } else {
+                return 'Canceled';
+            }
+        }
+
         for ($i = 0; $i < 50000; $i++) {
 
             $rows[] = [
                 'user_id' => rand(1, 1000),
-                'status' => 'Completed',
+                'status' => getRandomStatus(),
                 'total_amount' => rand(50, 500),
                 'shipping_address' => 'Damascus',
                 'created_at' => now(),
