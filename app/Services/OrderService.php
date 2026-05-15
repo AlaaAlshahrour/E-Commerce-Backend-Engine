@@ -166,7 +166,6 @@ class OrderService
     {
         $user = Auth::user();
         $perUserLock = Cache::lock("checkout:user:{$user->id}");// previnting the same user to checkout twice.
-        $inventoryLock = Cache::lock('inventory', 2);
         if (!$perUserLock->get()) {
             return ['success' => false, 'message' => 'Checkout in progress'];
         }
@@ -192,16 +191,14 @@ class OrderService
 
                 // Check Inventory
                 $productIds = $cartItems->pluck('product_id')->sort()->values();
-                while (!$inventoryLock->get()) {
-                    sleep(1);
-                }
+
                 $inventories = Inventory::whereIn('product_id', $productIds)
                     ->orderBy('product_id')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('product_id');
 
-                $inventoryLock->release();
+
                 $unavailable = collect();
                 foreach ($cartItems as $item) {
                     $inventory = $inventories->get($item->product_id);
@@ -263,7 +260,6 @@ class OrderService
             return $res;
         } finally {
             $perUserLock->release();
-            $inventoryLock->release();
         }
     }
 
@@ -310,4 +306,21 @@ class OrderService
         return !$wallet || !$wallet->is_active;
     }
 
+}
+{
+    $user = Auth::user();
+    $perUserLock = Cache::lock("checkout:user:{$user->id}");// previnting the same user to checkout twice.
+    if (!$perUserLock->get()) {
+        return ['success' => false, 'message' => 'Checkout in progress'];
+    }
+    try {
+        $res = DB::transaction(function () use ($data, $perUserLock, $user, $inventoryLock) {
+            // Create the order.
+            $perUserLock->release();
+            // return success result
+        });
+        return $res;
+    } finally {
+        $perUserLock->release();
+    }
 }

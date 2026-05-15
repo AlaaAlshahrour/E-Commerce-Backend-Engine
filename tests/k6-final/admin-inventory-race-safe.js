@@ -148,11 +148,6 @@ export function teardown(data) {
     console.log(`  Buyer purchased          : 10 units`);
     console.log(`  Admin tried to increment : +${ADMIN_INCREMENT}`);
     console.log(`  Expected safe final qty  : ${expected}`);
-    console.log(
-        `  Expected correct final qty: ${
-            data.qtyBefore + ADMIN_INCREMENT - BUYER_QUANTITY
-        }`
-    );
     console.log(`  Actual final qty         : ${finalQty}`);
 
 
