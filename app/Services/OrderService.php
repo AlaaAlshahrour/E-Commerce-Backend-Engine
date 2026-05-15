@@ -170,7 +170,7 @@ class OrderService
             return ['success' => false, 'message' => 'Checkout in progress'];
         }
         try {
-            $res = DB::transaction(function () use ($data, $perUserLock, $user, $inventoryLock) {
+            $res = DB::transaction(function () use ($data, $perUserLock, $user) {
 
                 // Validate Cart
                 $cart = $user->cart;
@@ -306,21 +306,4 @@ class OrderService
         return !$wallet || !$wallet->is_active;
     }
 
-}
-{
-    $user = Auth::user();
-    $perUserLock = Cache::lock("checkout:user:{$user->id}");// previnting the same user to checkout twice.
-    if (!$perUserLock->get()) {
-        return ['success' => false, 'message' => 'Checkout in progress'];
-    }
-    try {
-        $res = DB::transaction(function () use ($data, $perUserLock, $user, $inventoryLock) {
-            // Create the order.
-            $perUserLock->release();
-            // return success result
-        });
-        return $res;
-    } finally {
-        $perUserLock->release();
-    }
 }
