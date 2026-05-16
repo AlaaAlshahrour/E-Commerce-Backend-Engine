@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\NodeController;
 use Illuminate\Support\Facades\Route;
+use App\Models\Order;
+use Illuminate\Support\Facades\Storage;
 
 // //////////   Auth   /////////////////////
 
@@ -87,63 +89,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/daily-sales-report/{date}', [DailySalesReportController::class, 'show']);
 });
 
-// //////   Testing Manar   //////////////////
+// //////   bring invoice   //////////////////
+Route::get('/orders/{order}/invoice', function (Order $order) {
 
-// Route::get('/test-job', function () {
-//     dispatch(new TestBackgroundJob());
+    if (!$order->invoice_path) {
+            return response()->json([
+        'message' => 'Invoice not generated yet'
+    ], 404);
+    }
 
-//     return response()->json([
-//         'message' => 'Job dispatched successfully'
-//     ]);
-// });
-
-// Route::get('/test-pdf/{orderId}', function ($orderId) {
-
-//     $order = Order::with([
-//         'user',
-//         'orderItems.product'
-//     ])->findOrFail($orderId);
-
-//     $invoiceData = [
-//         'invoice_number' => 'INV-' . str_pad($order->id, 5, '0', STR_PAD_LEFT),
-
-//         'purchase_date' => $order->created_at->format('Y-m-d'),
-
-//         'customer_name' => $order->user->name,
-
-//         'shipping_address' => $order->shipping_address,
-
-//         'payment_status' => $order->payment_status,
-
-//         'order_status' => $order->status,
-
-//         'total_amount' => $order->total_amount,
-
-//         'items' => $order->orderItems->map(function ($item) {
-
-//     return [
-//         'name' => $item->product->name,
-//         'quantity' => $item->quantity,
-//         'unit_price' => $item->unit_price,
-//         'subtotal' => $item->quantity * $item->unit_price,
-//     ];
-// })->toArray(),
-//     ];
-
-//     $pdf = Pdf::loadView('pdf.invoice', $invoiceData);
-
-//     return $pdf->download('invoice.pdf');
-// });
-
-Route::get('/test-checkout', function () {
-
-    Auth::loginUsingId(1);
-
-    $service = app(OrderService::class);
-
-    return $service->checkout([
-        'shipping_address' => 'Damascus',
-    ]);
+    return Storage::download($order->invoice_path);
 });
 
 Route::get('/node-info', function () {
