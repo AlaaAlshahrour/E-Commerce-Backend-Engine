@@ -6,26 +6,31 @@ use App\Models\Order;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class GenerateInvoicePdfJob implements ShouldQueue
 {
     use Queueable;
+    public $tries = 3;
 
-    /**
-     * Create a new job instance.
-     */
+    public $backoff = 10;
     public function __construct(
         public int $orderId
     ) {}
 
     public function handle(): void
     {
-        $order = Order::with([
+$jobStartTime = microtime(true);
+    try{$order = Order::with([
             'user',
             'orderItems.product',
         ])->find($this->orderId);
 
         if (! $order) {
+    Log::warning(
+        "Order {$this->orderId} not found"
+    );
             return;
         }
 
@@ -52,15 +57,41 @@ class GenerateInvoicePdfJob implements ShouldQueue
                 ];
             })->toArray(),
         ];
-
         $pdf = app('dompdf.wrapper')->loadView(
             'pdf.invoice',
             $invoiceData
         );
+        $filePath = "public/invoices/invoice-{$order->id}.pdf";
 
+        if (Storage::exists($filePath)) {
+                Log::info(
+        "Invoice already exists for order {$order->id}"
+    );
+        return;
+}
         Storage::put(
-            "public/invoices/invoice-{$order->id}.pdf",
+            $filePath,
             $pdf->output()
         );
-    }
-}
+Log::info("Invoice PDF generated successfully for order {$order->id}");
+$order->update([
+    'invoice_path' => $filePath
+]);
+$jobExecutionTime = microtime(true) - $jobStartTime;
+
+Log::info('Invoice generation time', [
+    'order_id' => $order->id,
+    'time_seconds' => $jobExecutionTime,
+]);
+    }catch (Throwable $e) {
+
+        Log::error(
+            "Invoice generation failed for order {$this->orderId}",
+            [
+                'error' => $e->getMessage(),
+            ]
+        );
+
+        throw $e;
+    } } }
+

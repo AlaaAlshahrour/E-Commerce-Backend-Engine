@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\GenerateInvoicePdfJob;
 use Throwable;
+use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
@@ -71,197 +72,163 @@ class OrderService
     }
 
 
-    public function checkoutUnsafe(array $data): array
-    {
-        $user = Auth::user();
-        $cart = $user->cart;
+public function checkoutSafe(array $data): array
+{
 
-        if ($this->isCartEmpty($cart)) {
-            return ['success' => false, 'message' => 'Cart is empty'];
-        }
+    $user = Auth::user();
 
+    $perUserLock = Cache::lock("checkout:user:{$user->id}");
 
-        /** @var Wallet $wallet */
-        $wallet = $user->wallet;
-
-        if ($this->isWalletUnvalid($wallet)) {
-            return ['success' => false, 'message' => 'Wallet not found or inactive'];
-        }
-
-        $cartItems = $cart->cartItems()->with('product.inventory')->get();
-        $productIds = $cartItems->pluck('product_id')->sort()->values();
-
-
-        $inventories = Inventory::whereIn('product_id', $productIds)
-            ->orderBy('product_id')
-            ->get()
-            ->keyBy('product_id');
-        sleep(1);
-        $unavailable = collect();
-        foreach ($cartItems as $item) {
-            $inventory = $inventories->get($item->product_id);
-            $stock = $inventory ? $inventory->quantity : 0;
-
-            if ($stock < $item->quantity) {
-                $unavailable->push([
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product->name,
-                    'requested' => $item->quantity,
-                    'available' => $stock,
-                ]);
-            }
-        }
-
-        if ($unavailable->isNotEmpty()) {
-            return [
-                'success' => false,
-                'message' => 'Some products are out of stock',
-                'data' => $unavailable->map(fn($item) => [
-                    'product_id' => $item->product_id,
-                    'product_name' => $item->product->name,
-                    'requested' => $item->quantity,
-                    'available' => $item->product->inventory?->quantity ?? 0,
-                ]),
-            ];
-        }
-        $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
-
-        if ($wallet->balance < $amount) {
-            return [
-                'success' => false,
-                'message' => 'Insufficient wallet balance',
-                'data' => [
-                    'required' => $amount,
-                    'available' => $wallet->balance,
-                    'shortage' => $amount - $wallet->balance,
-                ],
-            ];
-        }
-
-        $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems,$inventories);
-
-
-        $transaction = $this->makeTransaction($wallet, $amount, $order);
-
-
-        $order->update(['payment_status' => 'paid']);
-
-
+    if (!$perUserLock->get()) {
         return [
-            'success' => true,
-            'message' => 'Payment completed successfully',
-            'data' => [
-                'order' => $order,
-                'transaction' => $transaction,
-                'wallet_balance' => $wallet->fresh()->balance,
-            ],
+            'success' => false,
+            'message' => 'Checkout in progress'
         ];
-
     }
+$startTime = microtime(true);
+    try {
 
+        $res = DB::transaction(function () use ($data, $perUserLock, $user, $startTime) {
 
+            // Validate Cart
+            $cart = $user->cart;
 
+            if ($this->isCartEmpty($cart)) {
+                return [
+                    'success' => false,
+                    'message' => 'Cart is empty'
+                ];
+            }
 
-    public function checkoutSafe(array $data): array
-    {
-        $user = Auth::user();
-        $perUserLock = Cache::lock("checkout:user:{$user->id}");// previnting the same user to checkout twice.
-        if (!$perUserLock->get()) {
-            return ['success' => false, 'message' => 'Checkout in progress'];
-        }
-        try {
-            $res = DB::transaction(function () use ($data, $perUserLock, $user) {
+            $cartItems = $cart->cartItems()
+                ->with('product.inventory')
+                ->get();
 
-                // Validate Cart
-                $cart = $user->cart;
+            /** @var Wallet $wallet */
+            $wallet = $user->wallet()
+                ->lockForUpdate()
+                ->first();
 
-                if ($this->isCartEmpty($cart)) {
-                    return ['success' => false, 'message' => 'Cart is empty'];
+            if ($this->isWalletUnvalid($wallet)) {
+                return [
+                    'success' => false,
+                    'message' => 'Wallet not found or inactive'
+                ];
+            }
+
+            $productIds = $cartItems
+                ->pluck('product_id')
+                ->sort()
+                ->values();
+
+            $inventories = Inventory::whereIn(
+                    'product_id',
+                    $productIds
+                )
+                ->orderBy('product_id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_id');
+
+            $unavailable = collect();
+
+            foreach ($cartItems as $item) {
+
+                $inventory = $inventories
+                    ->get($item->product_id);
+
+                $stock = $inventory
+                    ? $inventory->quantity
+                    : 0;
+
+                if ($stock < $item->quantity) {
+
+                    $unavailable->push([
+                        'product_id' => $item->product_id,
+                        'product_name' => $item->product->name,
+                        'requested' => $item->quantity,
+                        'available' => $stock,
+                    ]);
                 }
+            }
 
-                $cartItems = $cart->cartItems()->with('product.inventory')->get();
+            if ($unavailable->isNotEmpty()) {
+                return [
+                    'success' => false,
+                    'message' => 'Some products are out of stock',
+                    'data' => $unavailable,
+                ];
+            }
 
-                // Validate Wallet
-                /** @var Wallet $wallet */
-                $wallet = $user->wallet()->lockForUpdate()->first();
+            $amount = $cartItems->sum(
+                fn($item) =>
+                $item->quantity * $item->product->price
+            );
 
-                if ($this->isWalletUnvalid($wallet)) {
-                    return ['success' => false, 'message' => 'Wallet not found or inactive'];
-                }
-
-                // Check Inventory
-                $productIds = $cartItems->pluck('product_id')->sort()->values();
-
-                $inventories = Inventory::whereIn('product_id', $productIds)
-                    ->orderBy('product_id')
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('product_id');
-
-
-                $unavailable = collect();
-                foreach ($cartItems as $item) {
-                    $inventory = $inventories->get($item->product_id);
-                    $stock = $inventory ? $inventory->quantity : 0;
-
-                    if ($stock < $item->quantity) {
-                        $unavailable->push([
-                            'product_id' => $item->product_id,
-                            'product_name' => $item->product->name,
-                            'requested' => $item->quantity,
-                            'available' => $stock,
-                        ]);
-                    }
-                }
-
-                if ($unavailable->isNotEmpty()) {
-                    return [
-                        'success' => false,
-                        'message' => 'Some products are out of stock',
-                        'data' => $unavailable,
-                    ];
-                }
-
-                // Validate user has amount.
-                $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
-
-                if ($wallet->balance < $amount) {
-                    return [
-                        'success' => false,
-                        'message' => 'Insufficient wallet balance',
-                        'data' => [
-                            'required' => $amount,
-                            'available' => $wallet->balance,
-                            'shortage' => $amount - $wallet->balance,
-                        ],
-                    ];
-                }
-
-                // Create the order.
-                $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems, $inventories);
-                $perUserLock->release();
-
-                $transaction = $this->makeTransaction($wallet, $amount, $order);
-
-
-                $order->update(['payment_status' => 'paid']);
-
+            if ($wallet->balance < $amount) {
 
                 return [
-                    'success' => true,
-                    'message' => 'Payment completed successfully',
+                    'success' => false,
+                    'message' => 'Insufficient wallet balance',
                     'data' => [
-                        'order' => $order,
-                        'transaction' => $transaction,
-                        'wallet_balance' => $wallet->fresh()->balance,
+                        'required' => $amount,
+                        'available' => $wallet->balance,
+                        'shortage' => $amount - $wallet->balance,
                     ],
                 ];
-            });
-            return $res;
-        } finally {
+            }
+
+            // Create order
+            $order = $this->orderRepository->createOrder(
+                $user,
+                $cart,
+                $amount,
+                $data,
+                $cartItems,
+                $inventories
+            );
             $perUserLock->release();
+
+            $transaction = $this->makeTransaction(
+                $wallet,
+                $amount,
+                $order
+            );
+
+            $order->update([
+                'payment_status' => 'paid'
+            ]);
+
+
+            return [
+                'success' => true,
+                'message' => 'Payment completed successfully',
+                'data' => [
+                    'order' => $order,
+                    'transaction' => $transaction,
+                    'wallet_balance' => $wallet->fresh()->balance,
+                ],
+            ];
+        });
+
+        $executionTime = microtime(true) - $startTime;
+
+Log::info('Checkout execution time', [
+    'time_seconds' => $executionTime,
+]);
+        if ($res['success']) {
+            GenerateInvoicePdfJob::dispatch(
+                $res['data']['order']->id
+            );
         }
+
+        return $res;
+
+    } finally {
+
+        $perUserLock->release();
     }
+}
 
 
     /**
