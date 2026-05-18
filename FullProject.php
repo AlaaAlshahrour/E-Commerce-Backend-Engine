@@ -125,7 +125,7 @@ namespace App\Models;class Product extends Model{use HasFactory;protected $guard
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Transaction.php =====
 namespace App\Models;class Transaction extends Model{use HasFactory;protected $guarded = [];public function wallet(): BelongsTo{return $this->belongsTo(Wallet::class);}public function order(): BelongsTo{return $this->belongsTo(Order::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\User.php =====
-namespace App\Models;class User extends Authenticatable{use HasApiTokens,HasFactory,Notifiable;protected function casts(): array{return [
+namespace App\Models;class User extends Authenticatable{use HasFactory,Notifiable;protected function casts(): array{return [
 'email_verified_at' => 'datetime','password' => 'hashed',];}public function cart(){return $this->hasOne(Cart::class);}public function orders(){return $this->hasMany(Order::class);}public function wallet(){return $this->hasOne(Wallet::class);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Models\Wallet.php =====
 namespace App\Models;class Wallet extends Model{use HasFactory;protected $guarded = [];public function user(){return $this->belongsTo(User::class);}public function transactions(){return $this->hasMany(Transaction::class);}}
@@ -142,15 +142,6 @@ namespace App\Providers;class AppServiceProvider extends ServiceProvider{public 
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\CheckoutRequest.php =====
 namespace App\Http\Requests;class CheckoutRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
 'shipping_address' => 'required|string|min:5|max:500','safe'=>'sometimes',];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\LoginRequest.php =====
-namespace App\Http\Requests;class LoginRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'email' => ['required','email'],'password' => ['required','string','min:6'],];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\RegisterRequest.php =====
-namespace App\Http\Requests;class RegisterRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => ['required','string','max:255'],'email' => ['required','email','unique:users,email'],'password' => ['required','min:6','confirmed'],];}}
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreCategoryRequest.php =====
-namespace App\Http\Requests;class StoreCategoryRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
-'name' => 'required|string|max:255|unique:categories,name',];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Requests\StoreProductRequest.php =====
 namespace App\Http\Requests;class StoreProductRequest extends FormRequest{public function authorize(): bool{return true;}public function rules(): array{return [
 'name' => 'required|string|max:255','description' => 'nullable|string','price' => 'required|numeric|min:0','category_id' => 'required|exists:categories,id','image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',];}}
@@ -187,8 +178,8 @@ namespace App\Repositories;class OrderRepository{public function getUserOrders(i
 
 // === [Helpers] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Helpers\ResponseHelper.php =====
-namespace App\Helpers;class ResponseHelper{public static function jsonResponse($data = null,string $message = '',int $statusCode = 200,bool $successful = true,int $pageCount = null,int $userCount = null): JsonResponse{$responseData = [
-'successful' => $successful,'message' => $message,'node' => env('NODE_NAME',gethostname()),'data' => $data,'page_count' => $pageCount,'user_count' => $userCount,'status_code' => $statusCode,];if(is_null($data)||(is_array($data)&& empty($data))){unset($responseData['data']);}if(is_null($pageCount)){unset($responseData['page_count']);}if(is_null($userCount)){unset($responseData['user_count']);}return response()->json($responseData,$statusCode);}}
+namespace App\Helpers;class ResponseHelper{public static function jsonResponse($data = null,string $message = '',int $statusCode = 200,bool $successful = true,?int $pageCount = null,?int $userCount = null): JsonResponse{$responseData = [
+'successful' => $successful,'message' => $message,'node' => config('app.node'),'data' => $data,'page_count' => $pageCount,'user_count' => $userCount,'status_code' => $statusCode,];if(is_null($data)||(is_array($data)&& empty($data))){unset($responseData['data']);}if(is_null($pageCount)){unset($responseData['page_count']);}if(is_null($userCount)){unset($responseData['user_count']);}return response()->json($responseData,$statusCode);}}
 
 // === [Middleware] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\app\Http\Middleware\EnsureUserIsAdmin.php =====
@@ -260,7 +251,7 @@ return new class extends Migration{public function up(): void{Schema::create('jo
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045209_create_categories_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('categories',function(Blueprint $table){$table->id();$table->string('name');$table->timestamps();});}public function down(): void{Schema::dropIfExists('categories');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045210_create_products_table.php =====
-return new class extends Migration{public function up(): void{Schema::create('products',function(Blueprint $table){$table->id();$table->string('name');$table->text('description');$table->decimal('price',10,2);$table->string('photo_url')->nullable();$table->foreignIdFor(Category::class)->constrained();$table->timestamps();});}public function down(): void{Schema::dropIfExists('products');}};
+return new class extends Migration{public function up(): void{Schema::create('products',function(Blueprint $table){$table->id();$table->string('name');$table->text('description');$table->decimal('price');$table->string('photo_url');$table->foreignIdFor(Category::class)->constrained();$table->timestamps();});}public function down(): void{Schema::dropIfExists('products');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045211_create_inventories_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('inventories',function(Blueprint $table){$table->id();$table->foreignIdFor(Product::class)->constrained()->cascadeOnDelete();$table->integer('quantity')->default(0);$table->timestamps();});}public function down(): void{Schema::dropIfExists('inventories');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045212_create_carts_table.php =====
@@ -275,8 +266,6 @@ return new class extends Migration{public function up(): void{Schema::create('or
 return new class extends Migration{public function up(): void{Schema::create('wallets',function(Blueprint $table){$table->id();$table->foreignIdFor(User::class)->constrained();$table->decimal('balance',10,2);$table->boolean('is_active');$table->timestamps();});}public function down(): void{Schema::dropIfExists('wallets');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_03_045217_create_transactions_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('transactions',function(Blueprint $table){$table->id();$table->foreignIdFor(Wallet::class)->constrained();$table->foreignIdFor(Order::class)->nullable()->constrained()->nullOnDelete();$table->decimal('amount',10,2);$table->decimal('balance_before',10,2);$table->decimal('balance_after',10,2);$table->enum('type',['deposit','withdraw','payment','refund']);$table->enum('status',['pending','completed','failed']);$table->timestamps();});}public function down(): void{Schema::dropIfExists('transactions');}};
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_04_111058_create_personal_access_tokens_table.php =====
-return new class extends Migration{public function up(): void{Schema::create('personal_access_tokens',function(Blueprint $table){$table->id();$table->morphs('tokenable');$table->text('name');$table->string('token',64)->unique();$table->text('abilities')->nullable();$table->timestamp('last_used_at')->nullable();$table->timestamp('expires_at')->nullable()->index();$table->timestamps();});}public function down(): void{Schema::dropIfExists('personal_access_tokens');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_10_121209_create_daily_sales_reports_table.php =====
 return new class extends Migration{public function up(): void{Schema::create('daily_sales_reports',function(Blueprint $table){$table->id();$table->date('date')->unique();$table->integer('total_orders')->default(0);$table->decimal('total_revenue',15,2)->default(0);$table->string('pdf_path')->nullable();$table->string('processing_mode')->default('batch');$table->dateTime('export_start_time')->nullable();$table->dateTime('export_end_time')->nullable();$table->timestamps();});}public function down(): void{Schema::dropIfExists('daily_sales_reports');}};
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\migrations\2026_05_16_092831_add_invoice_path_to_orders_table.php =====
@@ -295,7 +284,7 @@ namespace Database\Seeders;class DatabaseSeeder extends Seeder{use WithoutModelE
 'name' => 'Test','password' => bcrypt('password')]);DB::disableQueryLog();$this->call([
 UserSeeder::class,CategorySeeder::class,ProductSeeder::class,InventorySeeder::class,WalletSeeder::class,CartSeeder::class,CartItemSeeder::class,OrderSeeder::class,OrderItemSeeder::class,TransactionSeeder::class,]);}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\InventorySeeder.php =====
-namespace Database\Seeders;class InventorySeeder extends Seeder{public function run(): void{Inventory::factory(10)->create();}}
+namespace Database\Seeders;class InventorySeeder extends Seeder{public function run(): void{}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\seeders\OrderItemSeeder.php =====
 namespace Database\Seeders;class OrderItemSeeder extends Seeder{public function run(): void{$orders = Order::pluck('id');$products = Product::all();$rows = [];foreach($orders as $orderId){$itemsCount = rand(1,3);$randomProducts = $products->random($itemsCount);foreach($randomProducts as $product){$quantity = rand(1,5);$rows[] = [
 'order_id' => $orderId,'product_id' => $product->id,'quantity' => $quantity,'unit_price' => $product->price,'created_at' => now(),'updated_at' => now(),];if(count($rows)>= 5000){DB::table('order_items')->insert($rows);$rows = [];}}}if(!empty($rows)){DB::table('order_items')->insert($rows);}}}
@@ -368,16 +357,16 @@ namespace Database\Seeders;class WalletSeeder extends Seeder{public function run
 // === [Factories] ===
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartFactory.php =====
 namespace Database\Factories;class CartFactory extends Factory{public function definition(): array{return [
-'user_id' => User::factory(),];}}
+];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CartItemFactory.php =====
 namespace Database\Factories;class CartItemFactory extends Factory{public function definition(): array{return [
 'product_id' => Product::inRandomOrder()->first()->id ?? Product::factory(),'cart_id' => Cart::inRandomOrder()->first()->id ?? Cart::factory(),'quantity' => fake()->numberBetween(1,5),];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\CategoryFactory.php =====
 namespace Database\Factories;class CategoryFactory extends Factory{public function definition(): array{return [
-'name' => fake()->words(2,true),];}}
+];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\InventoryFactory.php =====
 namespace Database\Factories;class InventoryFactory extends Factory{public function definition(): array{return [
-'product_id' => Product::factory(),'quantity' => fake()->numberBetween(0,100),];}}
+];}}
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\database\factories\OrderFactory.php =====
 namespace Database\Factories;class OrderFactory extends Factory{public function definition(): array{$date = Carbon::now()->subDays(rand(0,1));return [
 'user_id' => User::factory(),'status' => 'Completed','payment_status' => 'paid','total_amount' => fake()->randomFloat(2,50,1000),'created_at' => $date->copy()->setTime(rand(0,23),rand(0,59),rand(0,59)),'shipping_address' => $this->faker->address(),'updated_at' => now(),];}}
@@ -456,7 +445,7 @@ array(),),);
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\app.php =====
 return [
 'name' => env('APP_NAME','Laravel'),'env' => env('APP_ENV','production'),'debug' =>(bool)env('APP_DEBUG',false),'url' => env('APP_URL','http:
-'timezone' => 'UTC','locale' => env('APP_LOCALE','en'),'fallback_locale' => env('APP_FALLBACK_LOCALE','en'),'faker_locale' => env('APP_FAKER_LOCALE','en_US'),'cipher' => 'AES-256-CBC','key' => env('APP_KEY'),'previous_keys' => [
+'node' => env('NODE_NAME',gethostname()),'timezone' => 'UTC','locale' => env('APP_LOCALE','en'),'fallback_locale' => env('APP_FALLBACK_LOCALE','en'),'faker_locale' => env('APP_FAKER_LOCALE','en_US'),'cipher' => 'AES-256-CBC','key' => env('APP_KEY'),'previous_keys' => [
 ...array_filter(explode(',',(string)env('APP_PREVIOUS_KEYS',''))),],'maintenance' => [
 'driver' => env('APP_MAINTENANCE_DRIVER','file'),'store' => env('APP_MAINTENANCE_STORE','database'),],];
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\auth.php =====
@@ -570,10 +559,6 @@ return [
 'database','deferred',],],],'batching' => [
 'database' => env('DB_CONNECTION','sqlite'),'table' => 'job_batches',],'failed' => [
 'driver' => env('QUEUE_FAILED_DRIVER','database-uuids'),'database' => env('DB_CONNECTION','sqlite'),'table' => 'failed_jobs',],];
-// ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\sanctum.php =====
-return [
-'stateful' => explode(',',env('SANCTUM_STATEFUL_DOMAINS',sprintf('%s%s','localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',Sanctum::currentApplicationUrlWithPort(),))),'guard' => ['web'],'expiration' => null,'token_prefix' => env('SANCTUM_TOKEN_PREFIX',''),'middleware' => [
-'authenticate_session' => AuthenticateSession::class,'encrypt_cookies' => EncryptCookies::class,'validate_csrf_token' => ValidateCsrfToken::class,],];
 // ===== D:\Development\Laravel\E-Commerce-Backend-Engine\config\services.php =====
 return [
 'postmark' => [
