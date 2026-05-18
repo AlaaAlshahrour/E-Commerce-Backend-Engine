@@ -18,8 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
-        // ! Aydi was here to put the throttle with redis middleware
-        //        $middleware->throttleWithRedis();
+        $middleware->throttleWithRedis();
 
         $middleware->alias([
             'role' => EnsureUserIsAdmin::class,
