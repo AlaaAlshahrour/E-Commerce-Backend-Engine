@@ -21,7 +21,6 @@ class ProcessDailySalesJobTest extends TestCase
 
     public function test_process_daily_sales_job_creates_report_and_updates_inventory(): void
     {
-        // إنشاء بيانات وهمية
         $user = User::factory()->create();
         $product = Product::factory()->create();
         $inventory = Inventory::factory()->create([
@@ -29,7 +28,6 @@ class ProcessDailySalesJobTest extends TestCase
             'quantity' => 100,
         ]);
 
-        // إنشاء طلب مكتمل ومدفوع في اليوم السابق
         $order = Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'Completed',
@@ -45,11 +43,9 @@ class ProcessDailySalesJobTest extends TestCase
             'unit_price' => 20.00,
         ]);
 
-        // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
         $job->handle(app(DailySalesProcessingService::class));
 
-        // التحقق من إنشاء التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
         $this->assertNotNull($report);
         $this->assertEquals(1, $report->total_orders);
@@ -61,7 +57,6 @@ class ProcessDailySalesJobTest extends TestCase
 
     public function test_job_skips_if_report_already_exists(): void
     {
-        // إنشاء تقرير موجود مسبقاً
         DailySalesReport::create([
             'date' => Carbon::yesterday()->toDateString(),
             'total_orders' => 0,
@@ -69,18 +64,15 @@ class ProcessDailySalesJobTest extends TestCase
             'pdf_path' => null,
         ]);
 
-        // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
         $job->handle(app(DailySalesProcessingService::class));
 
-        // التحقق من عدم تغيير التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
         $this->assertEquals(0, $report->total_orders);
     }
 
     public function test_api_returns_report_data(): void
     {
-        // إنشاء تقرير
         $report = DailySalesReport::create([
             'date' => '2023-10-01',
             'total_orders' => 5,
@@ -90,11 +82,9 @@ class ProcessDailySalesJobTest extends TestCase
             'export_end_time' => Carbon::now(),
         ]);
 
-        // تسجيل دخول مستخدم
         $user = User::factory()->create();
         $this->actingAs($user, 'sanctum');
 
-        // استدعاء الـ API
         $response = $this->getJson('/api/daily-sales-report/2023-10-01');
 
         $response->assertStatus(200)
@@ -118,12 +108,9 @@ class ProcessDailySalesJobTest extends TestCase
 
     public function test_job_includes_all_orders_regardless_of_status(): void
     {
-        // إنشاء بيانات وهمية
         $user = User::factory()->create();
         $product = Product::factory()->create();
 
-        // إنشاء طلبات مختلفة الحالات
-        // 1. مكتمل ومدفوع
         Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'Completed',
@@ -132,7 +119,6 @@ class ProcessDailySalesJobTest extends TestCase
             'created_at' => Carbon::yesterday(),
         ]);
 
-        // 2. مكتمل وفشل الدفع
         Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'Completed',
@@ -141,7 +127,6 @@ class ProcessDailySalesJobTest extends TestCase
             'created_at' => Carbon::yesterday(),
         ]);
 
-        // 3. معالج ومدفوع
         Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'Processing',
@@ -150,7 +135,6 @@ class ProcessDailySalesJobTest extends TestCase
             'created_at' => Carbon::yesterday(),
         ]);
 
-        // 4. معالج وقيد الانتظار
         Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'Processing',
@@ -159,11 +143,9 @@ class ProcessDailySalesJobTest extends TestCase
             'created_at' => Carbon::yesterday(),
         ]);
 
-        // تشغيل الـ Job
         $job = new ProcessDailySalesJob;
         $job->handle(app(DailySalesProcessingService::class));
 
-        // التحقق من التقرير
         $report = DailySalesReport::where('date', Carbon::yesterday()->toDateString())->first();
         $this->assertNotNull($report);
         $this->assertEquals(4, $report->total_orders);

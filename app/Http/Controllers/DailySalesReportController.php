@@ -9,14 +9,12 @@ class DailySalesReportController extends Controller
 {
     public function show(string $date)
     {
-        // البحث عن التقرير
         $report = DailySalesReport::where('date', $date)->first();
 
         if (! $report) {
             return response()->json(['message' => 'Report not found for the given date.'], 404);
         }
 
-        // إرجاع البيانات مع رابط التحميل وجميع الإحصائيات
         return response()->json([
             'date' => $report->date,
             'total_orders' => $report->total_orders,

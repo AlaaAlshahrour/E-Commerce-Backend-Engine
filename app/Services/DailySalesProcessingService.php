@@ -131,7 +131,7 @@ class DailySalesProcessingService
             'largest_batch_memory' => round(max($memoryDeltas), 4),
             'smallest_batch_memory' => round(min($memoryDeltas), 4),
             'batch_count' => count($batchesMetrics),
-            'batch_size' => $batchesMetrics[0]['orders_count'] ?? 0, // Assuming uniform batch size
+            'batch_size' => $batchesMetrics[0]['orders_count'] ?? 0,
         ];
     }
 }
