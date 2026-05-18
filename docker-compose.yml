@@ -1,0 +1,161 @@
+services:
+
+    # ── Load Balancer ────────────────────────────
+    loadbalancer:
+        image: nginx:alpine
+        container_name: lb-nginx
+        ports:
+            - "8080:8080"
+        volumes:
+            - ./docker/nginx/loadbalancer.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - app1-web
+            - app2-web
+            - app3-web
+        networks:
+            - ecommerce-network
+
+    # ── Node 1 ───────────────────────────────────
+    app1:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                user: laravel
+                uid: 1000
+        container_name: app-node-1
+        environment:
+            NODE_NAME: "Node-1"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - .:/var/www
+            - /var/run/docker.sock:/var/run/docker.sock
+        expose:
+            - "9000"
+        networks:
+            - ecommerce-network
+
+    app1-web:
+        image: nginx:alpine
+        container_name: app-node-1-web
+        volumes:
+            - ./docker/nginx/app1.conf:/etc/nginx/conf.d/default.conf
+            - .:/var/www
+        depends_on:
+            - app1
+        expose:
+            - "8080"
+        networks:
+            - ecommerce-network
+
+    # ── Node 2 ───────────────────────────────────
+    app2:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                user: laravel
+                uid: 1000
+        container_name: app-node-2
+        environment:
+            NODE_NAME: "Node-2"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - .:/var/www
+            - /var/run/docker.sock:/var/run/docker.sock
+        expose:
+            - "9000"
+        networks:
+            - ecommerce-network
+
+    app2-web:
+        image: nginx:alpine
+        container_name: app-node-2-web
+        volumes:
+            - ./docker/nginx/app2.conf:/etc/nginx/conf.d/default.conf
+            - .:/var/www
+        depends_on:
+            - app2
+        expose:
+            - "8080"
+        networks:
+            - ecommerce-network
+
+    # ── Node 3 ───────────────────────────────────
+    app3:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                user: laravel
+                uid: 1000
+        container_name: app-node-3
+        environment:
+            NODE_NAME: "Node-3"
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ecommerce
+            DB_USERNAME: laravel
+            DB_PASSWORD: secret
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+        volumes:
+            - .:/var/www
+            - /var/run/docker.sock:/var/run/docker.sock
+        expose:
+            - "9000"
+        networks:
+            - ecommerce-network
+
+    app3-web:
+        image: nginx:alpine
+        container_name: app-node-3-web
+        volumes:
+            - ./docker/nginx/app3.conf:/etc/nginx/conf.d/default.conf
+            - .:/var/www
+        depends_on:
+            - app3
+        expose:
+            - "8080"
+        networks:
+            - ecommerce-network
+
+    # ── MySQL ─────────────────────────────────────
+    mysql:
+        image: mysql:8.0
+        container_name: ecommerce-mysql
+        environment:
+            MYSQL_DATABASE: ecommerce
+            MYSQL_ROOT_PASSWORD: secret
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: secret
+        volumes:
+            - mysql-data:/var/lib/mysql
+        networks:
+            - ecommerce-network
+
+    # ── Redis ─────────────────────────────────────
+    redis:
+        image: redis:alpine
+        container_name: ecommerce-redis
+        networks:
+            - ecommerce-network
+
+networks:
+    ecommerce-network:
+        driver: bridge
+
+volumes:
+    mysql-data:

@@ -1,0 +1,21 @@
+info:
+  name: topup
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/wallet/topup"
+  body:
+    type: multipart-form
+    data:
+      - name: amount
+        type: text
+        value: "9000000.05"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

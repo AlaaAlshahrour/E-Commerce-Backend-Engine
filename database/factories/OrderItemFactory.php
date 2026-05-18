@@ -2,12 +2,14 @@
 
 namespace Database\Factories;
 
+use App\Models\Order;
 use App\Models\OrderItem;
-use Illuminate\Database\Eloquent\Factories\Factory;
-
 /**
  * @extends Factory<OrderItem>
  */
+use App\Models\Product;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
 class OrderItemFactory extends Factory
 {
     /**
@@ -18,7 +20,10 @@ class OrderItemFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'product_id' => Product::inRandomOrder()->first()->id ?? Product::factory(),
+            'order_id' => Order::inRandomOrder()->first()->id ?? Order::factory(),
+            'quantity' => fake()->numberBetween(1, 5),
+            'unit_price' => fake()->randomFloat(2, 10, 500),
         ];
     }
 }

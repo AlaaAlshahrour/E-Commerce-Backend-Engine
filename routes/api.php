@@ -1,0 +1,124 @@
+<?php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\DailySalesReportController;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Controllers\NodeController;
+use Illuminate\Support\Facades\Route;
+use App\Models\Order;
+use Illuminate\Support\Facades\Storage;
+
+// //////////   Auth   /////////////////////
+
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register')->name('register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+});
+Route::get('/test', function () {
+    return response()->json([
+        'working' => true
+    ]);
+});
+// //////   Product & Category   //////////////////
+
+Route::middleware('throttle:public-api')->group(function () {
+    Route::apiResource('products', ProductController::class)
+        ->except(['store', 'update', 'destroy']);
+
+    Route::apiResource('categories', CategoryController::class)
+        ->except(['store', 'update', 'destroy']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::apiResource('products', ProductController::class)
+        ->except(['index', 'show']);
+
+    Route::apiResource('categories', CategoryController::class)
+        ->except(['index', 'show']);
+});
+
+// //////   cart   //////////////////
+
+Route::middleware(['auth:sanctum', 'throttle:cart'])->prefix('cart')->group(function () {
+    Route::post('/add/{product_id}', [CartController::class, 'add']);
+    Route::get('/', [CartController::class, 'getCartProducts']);
+    Route::delete('/clear', [CartController::class, 'deleteAll']);
+    Route::delete('/remove', [CartController::class, 'deleteProducts']);
+    Route::post('/update/{product_id}', [CartController::class, 'update']);
+});
+
+// //////   inventory   //////////////////
+Route::middleware(['auth:sanctum', 'throttle:inventory-update'])->prefix('inventory')->group(function () {
+    Route::get('/', [InventoryController::class, 'index']);
+    Route::get('/{productId}', [InventoryController::class, 'show']);
+    Route::put('/{productId}', [InventoryController::class, 'update']);
+});
+
+// //////   orders   //////////////////
+Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
+    Route::get('/', [OrderController::class, 'index'])->middleware('throttle:authenticated-api');
+    Route::post('/checkout', [OrderController::class, 'checkout'])->middleware('throttle:checkout');
+    Route::get('/{order}', [OrderController::class, 'show'])->middleware('throttle:authenticated-api');
+    Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->middleware([
+        'role:Admin',
+        'throttle:admin-actions',
+    ]);
+});
+
+
+////////   wallet   //////////////////
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/wallet', [WalletController::class, 'show'])->middleware('throttle:authenticated-api');
+    Route::post('/wallet/topup', [WalletController::class, 'topUp'])->middleware('throttle:wallet');
+});
+
+// //////   daily sales report   //////////////////
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/daily-sales-report/{date}', [DailySalesReportController::class, 'show']);
+});
+
+// //////   bring invoice   //////////////////
+Route::get('/orders/{order}/invoice', function (Order $order) {
+
+    if (!$order->invoice_path) {
+            return response()->json([
+        'message' => 'Invoice not generated yet'
+    ], 404);
+    }
+
+    return Storage::download($order->invoice_path);
+});
+
+Route::get('/node-info', function () {
+    return response()->json([
+        'hostname' => gethostname(),
+        'server_id' => env('SERVER_ID', 'unknown'),
+        'server_ip' => request()->server('SERVER_ADDR'),
+        'timestamp' => now()->toISOString(),
+        'php_version' => PHP_VERSION,
+    ]);
+});
+
+
+Route::prefix('nodes')->group(function () {
+
+    Route::get('/status', [NodeController::class, 'status']);
+
+    Route::post('/{node}/stop', [NodeController::class, 'stop']);
+
+    Route::post('/{node}/start', [NodeController::class, 'start']);
+
+    Route::post('/restore-all', [NodeController::class, 'restoreAll']);
+});

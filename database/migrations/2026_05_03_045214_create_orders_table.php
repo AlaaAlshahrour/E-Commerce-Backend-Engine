@@ -18,7 +18,6 @@ return new class extends Migration
             $table->enum('status', ['Processing', 'Canceled', 'Completed', 'pending']);
             $table->decimal('total_amount', 10, 2);
             $table->text('shipping_address');
-            $table->enum('payment_method', ['wallet', 'card', 'cash']);
             $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded']);
             $table->timestamps();
         });

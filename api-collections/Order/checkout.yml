@@ -1,0 +1,21 @@
+info:
+  name: checkout
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/orders/checkout"
+  body:
+    type: multipart-form
+    data:
+      - name: shipping_address
+        type: text
+        value: Damascus
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
