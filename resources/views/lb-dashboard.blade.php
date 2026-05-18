@@ -1657,7 +1657,6 @@
     // ══════════════════════════════════════════════
     // Tab 4: Failure Simulation
     // ══════════════════════════════════════════════
-
     // حالة العقد الفعلية
     let nodeStatus = {
         'Node-1': true,
@@ -1665,248 +1664,363 @@
         'Node-3': true,
     };
 
+    // الـ APIs الثابتة للبنشمارك
+    const FIXED_BENCHMARK_EPS = [
+        { name: 'All Products', method: 'GET', url: '/api/products', auth: false },
+        { name: 'Show Product',  method: 'GET', url: '/api/products/1', auth: false },
+        {name: 'All Categories', method: 'GET', url: '/api/categories', auth: false},
+        {name: 'Show Category', method: 'GET', url: '/api/categories/1', auth: false},
+    ];
+
+    // ─── رسم واجهة تبويب محاكاة الفشل ───
     function renderNodeControls() {
-        document.getElementById('nodes-control').innerHTML = VALID_NODES.map(node => {
-            const running = nodeStatus[node];
-            return `
-        <div class="node-control-card ${running ? 'running' : 'stopped'}" id="ctrl-${node}">
-            <div class="node-ctrl-header">
-                <span class="node-ctrl-name">🖥 ${node}</span>
-                <div class="status-dot ${running ? 'dot-green' : 'dot-red'}"></div>
+        document.getElementById('nodes-control').innerHTML = `
+        <div dir="rtl" style="font-family: sans-serif; color: #f8fafc;">
+
+            <!-- بطاقات العقد -->
+            <div style="display:flex; gap:0.8rem; flex-wrap:wrap; margin-bottom:1.2rem;" id="node-cards-row">
+                ${VALID_NODES.map(node => renderNodeCard(node)).join('')}
             </div>
-            <div class="stat">
-                <span class="stat-label">الحالة الفعلية</span>
-                <span class="stat-value" style="color:${running ? '#4ade80' : '#f87171'}">
-                    ${running ? '✅ يعمل' : '⛔ متوقف'}
-                </span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">الطلبات المعالجة</span>
-                <span class="stat-value" id="fn-count-${node}">0</span>
-            </div>
-            <div style="margin-top:0.8rem;display:flex;gap:0.5rem">
-                <button
-                    class="btn ${running ? 'btn-red' : 'btn-green'}"
-                    id="btn-${node}"
-                    onclick="${running ? `stopNodeReal('${node}')` : `startNodeReal('${node}')`}"
-                    style="font-size:0.75rem;padding:0.4rem 0.8rem">
-                    ${running ? '⏹ إيقاف فعلي' : '▶ تشغيل فعلي'}
+
+            <!-- زر الاختبار -->
+            <div style="display:flex; gap:0.8rem; flex-wrap:wrap; align-items:center; margin-bottom:1.5rem;">
+                <button onclick="runBenchmark()" id="bench-btn"
+                    style="flex:1; min-width:180px; padding:0.75rem 1.2rem; background:#4f46e5; color:white;
+                           border:none; border-radius:8px; font-size:0.95rem; font-weight:bold; cursor:pointer;">
+                    🚀 تشغيل اختبار الأداء
+                </button>
+                <button onclick="restoreAllNodes()"
+                    style="padding:0.75rem 1rem; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer;">
+                    🔄 استعادة كل العقد
                 </button>
             </div>
+
+            <!-- منطقة النتائج -->
+            <div id="bench-results-zone"></div>
+
         </div>`;
-        }).join('');
     }
 
-    // جلب حالة العقد من الـ API
+    function renderNodeCard(node) {
+        const running = nodeStatus[node];
+        return `
+        <div id="ctrl-${node}" style="flex:1; min-width:150px; background:#1e293b; border:1px solid ${running ? '#334155' : '#7f1d1d'};
+             border-radius:10px; padding:0.9rem; text-align:center;">
+            <div style="font-size:0.85rem; color:#94a3b8; margin-bottom:0.4rem;">🖥 ${node}</div>
+            <div style="font-size:0.8rem; font-weight:bold; margin-bottom:0.7rem; color:${running ? '#4ade80' : '#f87171'}">
+                ${running ? '● يعمل' : '● متوقف'}
+            </div>
+            <div style="font-size:0.72rem; color:#64748b; margin-bottom:0.6rem;">
+                الطلبات: <span id="fn-count-${node}" style="color:#cbd5e1">0</span>
+            </div>
+            <button id="btn-${node}"
+                onclick="${running ? `stopNodeReal('${node}')` : `startNodeReal('${node}')`}"
+                style="font-size:0.72rem; padding:0.3rem 0.7rem; border:none; border-radius:6px; cursor:pointer;
+                       background:${running ? '#7f1d1d' : '#14532d'}; color:${running ? '#fca5a5' : '#86efac'};">
+                ${running ? '⏹ إيقاف' : '▶ تشغيل'}
+            </button>
+        </div>`;
+    }
+
+    function refreshNodeCards() {
+        const row = document.getElementById('node-cards-row');
+        if (row) row.innerHTML = VALID_NODES.map(node => renderNodeCard(node)).join('');
+    }
+
+    // جلب حالة العقد
     async function fetchNodeStatus() {
         try {
-            const res = await fetch('/api/nodes/status', {
-                headers: {'Accept': 'application/json'}
-            });
+            const res = await fetch('/api/nodes/status', { headers: {'Accept': 'application/json'} });
             const data = await res.json();
-
             if (data.successful && data.nodes) {
-                Object.entries(data.nodes).forEach(([nodeName, info]) => {
-                    nodeStatus[nodeName] = info.running;
-                });
-                renderNodeControls();
+                Object.entries(data.nodes).forEach(([n, info]) => { nodeStatus[n] = info.running; });
+                refreshNodeCards();
             }
-        } catch (e) {
-            addFailureLog('❌ فشل جلب حالة العقد: ' + e.message, 'err');
-        }
+        } catch (e) { addFailureLog('❌ فشل جلب حالة العقد: ' + e.message, 'err'); }
     }
 
-    // إيقاف عقدة فعلياً
+    // إيقاف عقدة
     async function stopNodeReal(node) {
         const btn = document.getElementById(`btn-${node}`);
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = '⏳ جاري الإيقاف...';
-        }
-
-        addFailureLog(`⏳ إيقاف ${node} فعلياً عبر Docker...`, 'warn');
-
+        if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+        addFailureLog(`⏳ إيقاف ${node}...`, 'warn');
         try {
             const res = await fetch(`/api/nodes/${encodeURIComponent(node)}/stop`, {
-                method: 'POST',
-                headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}
+                method: 'POST', headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}
             });
             const data = await res.json();
-
             if (data.successful) {
                 nodeStatus[node] = false;
-                addFailureLog(`⛔ ${node} توقف فعلياً — NGINX سيعيد التوزيع تلقائياً خلال ${30}s`, 'warn');
-                addFailureLog(`📊 الطلبات ستُوزَّع الآن على: ${VALID_NODES.filter(n => nodeStatus[n]).join(' + ')}`, 'info');
+                addFailureLog(`⛔ ${node} توقف — NGINX سيعيد التوزيع`, 'warn');
             } else {
                 addFailureLog(`❌ فشل إيقاف ${node}: ${data.message}`, 'err');
             }
-        } catch (e) {
-            addFailureLog(`❌ خطأ في إيقاف ${node}: ` + e.message, 'err');
-        }
-
+        } catch (e) { addFailureLog(`❌ خطأ: ` + e.message, 'err'); }
         await fetchNodeStatus();
     }
 
-    // تشغيل عقدة فعلياً
+    // تشغيل عقدة
     async function startNodeReal(node) {
         const btn = document.getElementById(`btn-${node}`);
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = '⏳ جاري التشغيل...';
-        }
-
-        addFailureLog(`⏳ تشغيل ${node} فعلياً عبر Docker...`, 'info');
-
+        if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+        addFailureLog(`⏳ تشغيل ${node}...`, 'info');
         try {
             const res = await fetch(`/api/nodes/${encodeURIComponent(node)}/start`, {
-                method: 'POST',
-                headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}
+                method: 'POST', headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}
             });
             const data = await res.json();
-
             if (data.successful) {
-                // حدّث الحالة محلياً فوراً بدون انتظار الـ API
                 nodeStatus[node] = true;
-                renderNodeControls();
-                addFailureLog(`✅ ${node} يعمل مجدداً — NGINX سيبدأ إرسال الطلبات إليه`, 'ok');
-
-                // انتظر 4 ثوانٍ ثم تحقق من الـ API
-                setTimeout(async () => {
-                    await fetchNodeStatus();
-                }, 4000);
+                addFailureLog(`✅ ${node} يعمل مجدداً`, 'ok');
+                setTimeout(fetchNodeStatus, 3000);
             } else {
                 addFailureLog(`❌ فشل تشغيل ${node}: ${data.message}`, 'err');
-                if (btn) {
-                    btn.disabled = false;
-                }
+                if (btn) btn.disabled = false;
                 await fetchNodeStatus();
             }
         } catch (e) {
-            addFailureLog(`❌ خطأ في تشغيل ${node}: ` + e.message, 'err');
-            if (btn) {
-                btn.disabled = false;
-            }
+            addFailureLog(`❌ خطأ: ` + e.message, 'err');
+            if (btn) btn.disabled = false;
         }
+        refreshNodeCards();
     }
 
     async function restoreAllNodes() {
         addFailureLog('⏳ جاري استعادة جميع العقد...', 'info');
-
-        // حدّث الحالة محلياً فوراً
         VALID_NODES.forEach(n => nodeStatus[n] = true);
-        renderNodeControls();
-
+        refreshNodeCards();
         try {
             const res = await fetch('/api/nodes/restore-all', {
-                method: 'POST',
-                headers: {'Accept': 'application/json'}
+                method: 'POST', headers: {'Accept': 'application/json'}
             });
             const data = await res.json();
-            if (data.successful) {
-                addFailureLog('✅ جميع العقد تعمل مجدداً', 'ok');
-            }
-        } catch (e) {
-            addFailureLog('❌ خطأ: ' + e.message, 'err');
-        }
-
-        // انتظر 5 ثوانٍ ثم تحقق من الحالة الفعلية
-        setTimeout(async () => {
-            await fetchNodeStatus();
-            addFailureLog('🔄 تم التحقق من حالة العقد', 'info');
-        }, 5000);
+            if (data.successful) addFailureLog('✅ جميع العقد تعمل مجدداً', 'ok');
+        } catch (e) { addFailureLog('❌ خطأ: ' + e.message, 'err'); }
+        setTimeout(async () => { await fetchNodeStatus(); }, 4000);
     }
 
-
-    async function startFailureMonitor() {
-        if (failureTimer) return;
-        if (!token) {
-            const ok = await loginFirst();
-            if (!ok) return;
-        }
-
-        await fetchNodeStatus();
-
-        const runningNodes = VALID_NODES.filter(n => nodeStatus[n]);
-        if (runningNodes.length === 0) {
-            addFailureLog('❌ لا توجد عقد تعمل — اضغط "استعادة كل العقد" أولاً', 'err');
+    // ─── البنشمارك الرئيسي ───
+    async function runBenchmark() {
+        const activeNodes = VALID_NODES.filter(n => nodeStatus[n]);
+        if (activeNodes.length === 0) {
+            addFailureLog('❌ لا توجد عقد نشطة!', 'err');
             return;
         }
 
+        const btn = document.getElementById('bench-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ جاري الاختبار...'; }
+
+        // تصفير عدادات العقد في الواجهة
+        VALID_NODES.forEach(n => {
+            const el = document.getElementById(`fn-count-${n}`);
+            if (el) el.textContent = '0';
+        });
+
+        // إظهار حالة التحميل
+        const zone = document.getElementById('bench-results-zone');
+        if (zone) zone.innerHTML = `
+            <div style="text-align:center; color:#64748b; padding:2rem; background:#1e293b;
+                        border-radius:10px; border:1px dashed #334155;">
+                ⏳ جاري إرسال 100 طلب على ${activeNodes.length} عقدة نشطة...
+            </div>`;
+
+        const localNodes = {};
+        let localOk = 0, localErr = 0, localMinMs = Infinity;
+
+        addFailureLog(`🚀 اختبار 100 طلب على: ${activeNodes.join(' + ')}`, 'info');
+
+        const startTime = performance.now();
+
+        await Promise.all(Array.from({length: 100}, async () => {
+            const ep = FIXED_BENCHMARK_EPS[Math.floor(Math.random() * FIXED_BENCHMARK_EPS.length)];
+            const t0 = Date.now();
+            try {
+                const h = {'Accept': 'application/json'};
+                if (typeof token !== 'undefined' && token) h['Authorization'] = 'Bearer ' + token;
+                const res = await fetch(ep.url, {method: ep.method, headers: h});
+                const ms = Date.now() - t0;
+                const data = await res.json();
+                const nodeName = VALID_NODES.includes(data.node) ? data.node : null;
+                if (res.ok && nodeName) {
+                    localOk++;
+                    if (!localNodes[nodeName]) localNodes[nodeName] = {count: 0, totalMs: 0};
+                    localNodes[nodeName].count++;
+                    localNodes[nodeName].totalMs += ms;
+                    if (ms < localMinMs) localMinMs = ms;
+                    const el = document.getElementById(`fn-count-${nodeName}`);
+                    if (el) el.textContent = localNodes[nodeName].count;
+                } else { localErr++; }
+            } catch (e) { localErr++; }
+        }));
+
+        const totalMs = Math.round(performance.now() - startTime);
+        const avgMs   = localOk ? Math.round(totalMs / localOk) : 0;
+        const minMs   = localMinMs === Infinity ? 0 : localMinMs;
+        const rate    = Math.round((localOk / 100) * 100);
+
+        addFailureLog(`✅ انتهى: ${localOk}/100 ناجح، متوسط ${avgMs}ms، زمن كلي ${totalMs}ms`, 'ok');
+
+        // رسم النتائج بأسلوب الصورة
+        renderBenchmarkResults({
+            total: 100, ok: localOk, err: localErr,
+            avg: avgMs, min: minMs, rate,
+            nodes: localNodes, activeCount: activeNodes.length
+        });
+
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 تشغيل اختبار الأداء'; }
+    }
+
+    function renderBenchmarkResults(r) {
+        const zone = document.getElementById('bench-results-zone');
+        if (!zone) return;
+
+        // أشرطة التوزيع على النودات
+        const nodeBars = VALID_NODES.map(node => {
+            const info  = r.nodes[node] || {count: 0, totalMs: 0};
+            const pct   = r.ok ? Math.round((info.count / r.ok) * 100) : 0;
+            const avg   = info.count ? Math.round(info.totalMs / info.count) : 0;
+            const isOff = !nodeStatus[node];
+            return `
+            <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.6rem; font-size:0.83rem;">
+                <span style="min-width:65px; text-align:right; color:${isOff ? '#64748b' : '#cbd5e1'};">
+                    ${isOff ? '⛔' : '🖥'} ${node}
+                </span>
+                <div style="flex:1; background:#e2e8f0; border-radius:20px; height:10px; overflow:hidden;">
+                    <div style="width:${pct}%; height:100%; border-radius:20px;
+                                background: linear-gradient(90deg,#6366f1,#818cf8);
+                                transition: width 0.5s ease;"></div>
+                </div>
+                <span style="min-width:110px; color:#94a3b8; text-align:left; white-space:nowrap;">
+                    ${info.count} طلب (${pct}%)${avg ? ` · ${avg}ms` : ''}
+                </span>
+            </div>`;
+        }).join('');
+
+        zone.innerHTML = `
+        <div style="background:#ffffff08; border:1px solid #e2e8f015; border-radius:12px; overflow:hidden;">
+
+            <!-- عنوان القسم -->
+            <div style="padding:0.9rem 1.2rem; border-bottom:1px solid #334155;
+                        display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:bold; font-size:0.95rem; color:#f1f5f9;">نتائج الاختبار</span>
+                <span style="font-size:0.75rem; color:#64748b;">
+                    ${r.activeCount} عقدة نشطة · الزمن الكلي: ${document.querySelector ? '' : ''}
+                    <span style="color:#94a3b8;">${r.total} طلب</span>
+                </span>
+            </div>
+
+            <!-- بطاقات الإحصائيات — تماماً كالصورة -->
+            <div style="padding:1rem 1.2rem; border-bottom:1px solid #1e293b;">
+                <div style="font-size:0.78rem; color:#94a3b8; text-align:right; margin-bottom:0.7rem;">نتائج الاختبار</div>
+                <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+
+                    <!-- إجمالي الطلبات -->
+                    <div style="flex:1; min-width:90px; background:#f8fafc08; border:1px solid #334155;
+                                border-radius:8px; padding:0.8rem 0.6rem; text-align:center;">
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.4rem;">إجمالي الطلبات</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#f1f5f9;">${r.total}</div>
+                    </div>
+
+                    <!-- ناجحة -->
+                    <div style="flex:1; min-width:90px; background:#f0fdf408; border:1px solid #166534;
+                                border-radius:8px; padding:0.8rem 0.6rem; text-align:center;">
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.4rem;">ناجحة</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#4ade80;">${r.ok}</div>
+                    </div>
+
+                    <!-- متوسط الاستجابة -->
+                    <div style="flex:1; min-width:90px; background:#eff6ff08; border:1px solid #1e40af;
+                                border-radius:8px; padding:0.8rem 0.6rem; text-align:center;">
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.4rem;">متوسط الاستجابة</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#60a5fa;">
+                            ${r.avg}<span style="font-size:0.75rem; color:#94a3b8;"> ms</span>
+                        </div>
+                    </div>
+
+                    <!-- أسرع استجابة -->
+                    <div style="flex:1; min-width:90px; background:#faf5ff08; border:1px solid #6b21a8;
+                                border-radius:8px; padding:0.8rem 0.6rem; text-align:center;">
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.4rem;">أسرع استجابة</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#c084fc;">
+                            ${r.min}<span style="font-size:0.75rem; color:#94a3b8;"> ms</span>
+                        </div>
+                    </div>
+
+                    <!-- نسبة النجاح -->
+                    <div style="flex:1; min-width:90px; background:#fff7ed08; border:1px solid #92400e;
+                                border-radius:8px; padding:0.8rem 0.6rem; text-align:center;">
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-bottom:0.4rem;">نسبة النجاح</div>
+                        <div style="font-size:1.4rem; font-weight:bold; color:#fb923c;">${r.rate}%</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- توزيع الطلبات على النودات -->
+            <div style="padding:1rem 1.2rem;">
+                <div style="font-size:0.78rem; color:#94a3b8; text-align:right; margin-bottom:0.8rem;">
+                    توزيع الطلبات على النودات
+                </div>
+                ${nodeBars}
+            </div>
+
+        </div>`;
+    }
+
+    // ─── دوال مطلوبة لمراقبة الفشل المباشرة (تبقى كما هي) ───
+    async function startFailureMonitor() {
+        if (failureTimer) return;
+        if (!token) { const ok = await loginFirst(); if (!ok) return; }
+        await fetchNodeStatus();
+        const runningNodes = VALID_NODES.filter(n => nodeStatus[n]);
+        if (runningNodes.length === 0) {
+            addFailureLog('❌ لا توجد عقد تعمل', 'err'); return;
+        }
         failureNodes = {};
-        flTotal = 0;
-        flOk = 0;
-        flErr = 0;
-        flRps = 0;
+        flTotal = 0; flOk = 0; flErr = 0; flRps = 0;
         document.getElementById('failure-live').style.display = 'block';
         document.getElementById('fail-stop-btn').disabled = false;
-
-        addFailureLog(`▶ بدأت المراقبة — العقد النشطة: ${runningNodes.join(', ')}`, 'ok');
-        addFailureLog('💡 اضغط "إيقاف فعلي" على أي عقدة وراقب إعادة التوزيع', 'info');
-
+        addFailureLog('▶ بدأت المراقبة المباشرة', 'ok');
         flRpsInterval = setInterval(() => {
-            document.getElementById('fl-rps').textContent = flRps;
-            flRps = 0;
+            document.getElementById('fl-rps').textContent = flRps; flRps = 0;
         }, 1000);
-
-        // تحديث حالة العقد كل 8 ثوانٍ
         const statusInterval = setInterval(async () => {
-            if (!failureTimer) {
-                clearInterval(statusInterval);
-                return;
-            }
+            if (!failureTimer) { clearInterval(statusInterval); return; }
             await fetchNodeStatus();
         }, 8000);
-
-        // إرسال الطلبات كل 300ms
         failureTimer = setInterval(async () => {
             await Promise.all(Array.from({length: 5}, () => failureFetchOne()));
         }, 300);
     }
 
     async function failureFetchOne() {
-        const ep = randEp(ALL_EPS);
-        if (ep.auth && !token) return;
-
+        const ep = FIXED_BENCHMARK_EPS[Math.floor(Math.random() * FIXED_BENCHMARK_EPS.length)];
         const t0 = Date.now();
         try {
             const h = {'Accept': 'application/json', 'Content-Type': 'application/json'};
-            if (ep.auth && token) h['Authorization'] = 'Bearer ' + token;
-            const opt = {method: ep.method, headers: h};
-            if (ep.body && ['POST', 'PUT', 'PATCH'].includes(ep.method)) opt.body = JSON.stringify(ep.body);
-
-            const res = await fetch(ep.url, opt);
-            const ms = Date.now() - t0;
+            if (typeof token !== 'undefined' && token) h['Authorization'] = 'Bearer ' + token;
+            const res = await fetch(ep.url, {method: ep.method, headers: h});
+            const ms  = Date.now() - t0;
             const data = await res.json();
             flRps++;
-
             const node = VALID_NODES.includes(data.node) ? data.node : null;
             flTotal++;
-
             if (res.ok && node) {
                 flOk++;
                 if (!failureNodes[node]) failureNodes[node] = {count: 0, totalMs: 0};
                 failureNodes[node].count++;
                 failureNodes[node].totalMs += ms;
-
                 const el = document.getElementById(`fn-count-${node}`);
                 if (el) el.textContent = failureNodes[node].count;
-            } else {
-                flErr++;
-            }
-
+            } else { flErr++; }
             updateFailureLive();
-        } catch (e) {
-            flTotal++;
-            flErr++;
-            updateFailureLive();
-        }
+        } catch (e) { flTotal++; flErr++; updateFailureLive(); }
     }
 
     function updateFailureLive() {
         document.getElementById('fl-total').textContent = flTotal;
-        document.getElementById('fl-ok').textContent = flOk;
-        document.getElementById('fl-err').textContent = flErr;
-
+        document.getElementById('fl-ok').textContent    = flOk;
+        document.getElementById('fl-err').textContent   = flErr;
         const grid = document.getElementById('failure-nodes-grid');
         grid.innerHTML = VALID_NODES.map(node => {
             const s = failureNodes[node] || {count: 0, totalMs: 0};
@@ -1914,28 +2028,26 @@
             const pct = flOk ? Math.round((s.count / flOk) * 100) : 0;
             const isStopped = !nodeStatus[node];
             return `
-        <div class="node-card ${isStopped ? 'down' : 'active'}">
-            <div class="node-name">
-                🖥 ${node}
-                <span class="badge ${isStopped ? 'badge-down' : 'badge-active'}">
-                    ${isStopped ? '⛔ متوقف' : 'نشط ◉'}
-                </span>
-            </div>
-            <div class="stat"><span class="stat-label">الطلبات</span><span class="stat-value">${s.count}</span></div>
-            <div class="stat"><span class="stat-label">التوزيع</span><span class="stat-value">${pct}%</span></div>
-            <div class="stat"><span class="stat-label">متوسط زمن</span><span class="stat-value">${avg}ms</span></div>
-            <div class="bar-bg">
-                <div class="bar-fg" style="width:${isStopped ? 0 : pct}%;background:${isStopped ? '#dc2626' : '#22d3ee'}"></div>
-            </div>
-        </div>`;
+            <div class="node-card ${isStopped ? 'down' : 'active'}">
+                <div class="node-name">🖥 ${node}
+                    <span class="badge ${isStopped ? 'badge-down' : 'badge-active'}">
+                        ${isStopped ? '⛔ متوقف' : 'نشط ◉'}
+                    </span>
+                </div>
+                <div class="stat"><span class="stat-label">الطلبات</span><span class="stat-value">${s.count}</span></div>
+                <div class="stat"><span class="stat-label">التوزيع</span><span class="stat-value">${pct}%</span></div>
+                <div class="stat"><span class="stat-label">متوسط زمن</span><span class="stat-value">${avg}ms</span></div>
+                <div class="bar-bg"><div class="bar-fg" style="width:${isStopped ? 0 : pct}%;background:${isStopped ? '#dc2626' : '#22d3ee'}"></div></div>
+            </div>`;
         }).join('');
     }
 
     function addFailureLog(msg, type = 'info') {
         const log = document.getElementById('failure-log');
+        if (!log) return;
         const e = document.createElement('div');
         e.className = 'flog-entry';
-        const cls = {info: 'flog-info', warn: 'flog-warn', err: 'flog-err', ok: 'flog-ok'}[type] || 'flog-info';
+        const cls = {info:'flog-info', warn:'flog-warn', err:'flog-err', ok:'flog-ok'}[type] || 'flog-info';
         e.innerHTML = `<span class="flog-time">${new Date().toLocaleTimeString('ar')}</span><span class="${cls}">${msg}</span>`;
         log.prepend(e);
         while (log.children.length > 100) log.removeChild(log.lastChild);
