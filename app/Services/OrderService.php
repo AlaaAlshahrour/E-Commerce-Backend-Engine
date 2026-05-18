@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use App\Repositories\CartRepository;
 use App\Repositories\OrderRepository;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -324,9 +325,9 @@ class OrderService
      * @param Wallet $wallet
      * @param $amount
      * @param Order $order
-     * @return \Illuminate\Database\Eloquent\Model
+     * @return Model
      */
-    function makeTransaction(Wallet $wallet, $amount, Order $order): \Illuminate\Database\Eloquent\Model
+    function makeTransaction(Wallet $wallet, $amount, Order $order): Model
     {
         $balanceBefore = $wallet->balance;
         $wallet->decrement('balance', $amount);
