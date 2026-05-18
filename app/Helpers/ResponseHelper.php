@@ -11,14 +11,13 @@ class ResponseHelper
         string $message = '',
         int $statusCode = 200,
         bool $successful = true,
-        int $pageCount = null,
-        int $userCount = null
-    ): JsonResponse
-    {
+        ?int $pageCount = null,
+        ?int $userCount = null
+    ): JsonResponse {
         $responseData = [
             'successful' => $successful,
             'message' => $message,
-            'node' => env('NODE_NAME', gethostname()),
+            'node' => config('app.node'),
             'data' => $data,
             'page_count' => $pageCount,
             'user_count' => $userCount,
@@ -38,4 +37,3 @@ class ResponseHelper
         return response()->json($responseData, $statusCode);
     }
 }
-

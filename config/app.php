@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Node Name
+    |--------------------------------------------------------------------------
+    |
+    | This value identifies the node/server where the application is running.
+    | Used in API responses for monitoring and debugging purposes.
+    |
+    */
+
+    'node' => env('NODE_NAME', gethostname()),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
