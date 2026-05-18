@@ -2,21 +2,16 @@ import http from 'k6/http';
 import { sleep, check, group } from 'k6';
 import { Counter, Trend, Rate } from 'k6/metrics';
 
-// ─── Base URL ────────────────────────────────────────────────────────────────
+//? ─── Base URL ────────────────────────────────────────────────────────────────
 const BASE_URL = 'http://127.0.0.1:8080/api';
 
-// ─── Custom Metrics ───────────────────────────────────────────────────────────
+//? ─── Custom Metrics ───────────────────────────────────────────────────────────
 const throttledRequests  = new Counter('throttled_requests_429');
 const rateLimitRemaining = new Trend('rate_limit_remaining');
 const rateLimitReset     = new Trend('rate_limit_reset_seconds');
 const successRate        = new Rate('success_rate');
 
-// ─── Rate Limit Headers to Monitor ───────────────────────────────────────────
-// Laravel + Redis emits these headers on every response:
-//   X-RateLimit-Limit     → max requests allowed in the window
-//   X-RateLimit-Remaining → how many requests left before throttling
-//   Retry-After           → seconds to wait after a 429 (only on throttled responses)
-//   X-RateLimit-Reset     → Unix timestamp when the window resets (not always present)
+//? ─── Rate Limit Headers to Monitor ───────────────────────────────────────────
 function captureRateLimitHeaders(res, label) {
   const limit     = res.headers['X-Ratelimit-Limit'];
   const remaining = res.headers['X-Ratelimit-Remaining'];
@@ -33,14 +28,14 @@ function captureRateLimitHeaders(res, label) {
   return { limit, remaining, retryAfter, reset };
 }
 
-// ─── Shared Headers ───────────────────────────────────────────────────────────
+//? ─── Shared Headers ───────────────────────────────────────────────────────────
 function jsonHeaders(token = null) {
   const h = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
   if (token) h['Authorization'] = `Bearer ${token}`;
   return h;
 }
 
-// ─── Auth Helper ──────────────────────────────────────────────────────────────
+//? ─── Auth Helper ──────────────────────────────────────────────────────────────
 function loginUser(email, password) {
   const res = http.post(
     `${BASE_URL}/login`,
@@ -59,16 +54,15 @@ function loginUser(email, password) {
     || null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  TEST SCENARIOS
-//  Each scenario maps to a specific rate limiter in your AppServiceProvider
-// ─────────────────────────────────────────────────────────────────────────────
+//? ─────────────────────────────────────────────────────────────────────────────
+//?  TEST SCENARIOS
+//? ─────────────────────────────────────────────────────────────────────────────
 export const options = {
   scenarios: {
 
-    // ── 1. public_api ─────────────────────────────────────────────
-    // Limit: 120/min per IP
-    // Goal:  sustained traffic just under + burst above the limit
+    //? ── 1. public_api ─────────────────────────────────────────────
+    //! Limit: 120/min per IP
+    //! Goal:  sustained traffic just under + burst above the limit
     public_api: {
       executor: 'ramping-vus',
       startVUs: 0,
@@ -82,9 +76,9 @@ export const options = {
       tags: { scenario: 'public_api' },
     },
 
-    // ── 2. login ─────────────────────────────────────────────────
-    // Limit: 5/min per email+IP
-    // Goal:  quickly hit the 5-attempt cap to verify lockout
+    //? ── 2. login ─────────────────────────────────────────────────
+    //! Limit: 5/min per email+IP
+    //! Goal:  quickly hit the 5-attempt cap to verify lockout
     login_bruteforce: {
       executor: 'constant-vus',
       vus: 3,
@@ -94,9 +88,9 @@ export const options = {
       tags: { scenario: 'login' },
     },
 
-    // ── 3. register ──────────────────────────────────────────────
-    // Limit: 3/min per IP
-    // Goal:  verify registrations beyond 3 are blocked
+    //? ── 3. register ──────────────────────────────────────────────
+    //! Limit: 3/min per IP
+    //! Goal:  verify registrations beyond 3 are blocked
     register_spam: {
       executor: 'constant-vus',
       vus: 2,
@@ -108,32 +102,28 @@ export const options = {
   },
 
   thresholds: {
-    // Overall health
-    throttled_requests_429:  ['count>0'],       // we EXPECT to see some 429s — test is invalid without them
+    //Overall health
+    throttled_requests_429:  ['count>0'], 
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SETUP — runs once, returns shared data passed to every VU
-// ─────────────────────────────────────────────────────────────────────────────
 export function setup() {
   console.log('=== K6 Laravel Rate Limit Test Suite ===');
   console.log('Logging in test users...');
 
-  // ⚠️  Replace these with real seeded users in your DB
   const regularToken = loginUser('user@example.com', 'password');
   const adminToken   = loginUser('admin@example.com', 'password');
-  if (!regularToken) console.warn('⚠️  Regular user login failed — authenticated tests will be skipped');
-  if (!adminToken)   console.warn('⚠️  Admin user login failed — admin tests will be skipped');
+  if (!regularToken) console.warn('Regular user login failed — authenticated tests will be skipped');
+  if (!adminToken)   console.warn('Admin user login failed — admin tests will be skipped');
 
   return { regularToken, adminToken };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SCENARIO FUNCTIONS
-// ─────────────────────────────────────────────────────────────────────────────
+//? ─────────────────────────────────────────────────────────────────────────────
+//?  SCENARIO FUNCTIONS
+//? ─────────────────────────────────────────────────────────────────────────────
 
-// ── 1. Public API (products + categories) ────────────────────────────────────
+//! ── 1. Public API (products + categories) ────────────────────────────────────
 export function publicApiScenario() {
   group('public_api', () => {
     const endpoints = [
@@ -156,7 +146,7 @@ export function publicApiScenario() {
   });
 }
 
-// ── 2. Login ─────────────────────────────────────────────────────────────────
+//! ── 2. Login ─────────────────────────────────────────────────────────────────
 export function loginScenario() {
   group('login', () => {
     const res = http.post(
@@ -177,7 +167,7 @@ export function loginScenario() {
   });
 }
 
-// ── 3. Register ───────────────────────────────────────────────────────────────
+//! ── 3. Register ───────────────────────────────────────────────────────────────
 export function registerScenario() {
   group('register', () => {
     const unique = `testuser_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
