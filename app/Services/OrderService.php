@@ -19,7 +19,9 @@ use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
-    public function __construct(protected OrderRepository $orderRepository) {}
+    public function __construct(protected OrderRepository $orderRepository)
+    {
+    }
 
     public function getUserOrders(): array
     {
@@ -71,164 +73,251 @@ class OrderService
         return ['success' => true, 'message' => 'Status updated successfully', 'data' => $updated];
     }
 
+    public function checkoutUnsafe(array $data): array
+    {
+        $user = Auth::user();
+        $cart = $user->cart;
 
-public function checkoutSafe(array $data): array
-{
+        if ($this->isCartEmpty($cart)) {
+            return ['success' => false, 'message' => 'Cart is empty'];
+        }
 
-    $user = Auth::user();
 
-    $perUserLock = Cache::lock("checkout:user:{$user->id}");
+        /** @var Wallet $wallet */
+        $wallet = $user->wallet;
 
-    if (!$perUserLock->get()) {
+        if ($this->isWalletUnvalid($wallet)) {
+            return ['success' => false, 'message' => 'Wallet not found or inactive'];
+        }
+
+        $cartItems = $cart->cartItems()->with('product.inventory')->get();
+        $productIds = $cartItems->pluck('product_id')->sort()->values();
+
+
+        $inventories = Inventory::whereIn('product_id', $productIds)
+            ->orderBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+        sleep(1);
+        $unavailable = collect();
+        foreach ($cartItems as $item) {
+            $inventory = $inventories->get($item->product_id);
+            $stock = $inventory ? $inventory->quantity : 0;
+
+            if ($stock < $item->quantity) {
+                $unavailable->push([
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'requested' => $item->quantity,
+                    'available' => $stock,
+                ]);
+            }
+        }
+
+        if ($unavailable->isNotEmpty()) {
+            return [
+                'success' => false,
+                'message' => 'Some products are out of stock',
+                'data' => $unavailable->map(fn($item) => [
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name,
+                    'requested' => $item->quantity,
+                    'available' => $item->product->inventory?->quantity ?? 0,
+                ]),
+            ];
+        }
+        $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
+
+        if ($wallet->balance < $amount) {
+            return [
+                'success' => false,
+                'message' => 'Insufficient wallet balance',
+                'data' => [
+                    'required' => $amount,
+                    'available' => $wallet->balance,
+                    'shortage' => $amount - $wallet->balance,
+                ],
+            ];
+        }
+
+        $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems, $inventories);
+
+
+        $transaction = $this->makeTransaction($wallet, $amount, $order);
+
+
+        $order->update(['payment_status' => 'paid']);
+
+
         return [
-            'success' => false,
-            'message' => 'Checkout in progress'
+            'success' => true,
+            'message' => 'Payment completed successfully',
+            'data' => [
+                'order' => $order,
+                'transaction' => $transaction,
+                'wallet_balance' => $wallet->fresh()->balance,
+            ],
         ];
+
     }
-$startTime = microtime(true);
-    try {
 
-        $res = DB::transaction(function () use ($data, $perUserLock, $user, $startTime) {
 
-            // Validate Cart
-            $cart = $user->cart;
+    public function checkoutSafe(array $data): array
+    {
 
-            if ($this->isCartEmpty($cart)) {
-                return [
-                    'success' => false,
-                    'message' => 'Cart is empty'
-                ];
-            }
+        $user = Auth::user();
 
-            $cartItems = $cart->cartItems()
-                ->with('product.inventory')
-                ->get();
+        $perUserLock = Cache::lock("checkout:user:{$user->id}");
 
-            /** @var Wallet $wallet */
-            $wallet = $user->wallet()
-                ->lockForUpdate()
-                ->first();
+        if (!$perUserLock->get()) {
+            return [
+                'success' => false,
+                'message' => 'Checkout in progress'
+            ];
+        }
+        $startTime = microtime(true);
+        try {
 
-            if ($this->isWalletUnvalid($wallet)) {
-                return [
-                    'success' => false,
-                    'message' => 'Wallet not found or inactive'
-                ];
-            }
+            $res = DB::transaction(function () use ($data, $perUserLock, $user, $startTime) {
 
-            $productIds = $cartItems
-                ->pluck('product_id')
-                ->sort()
-                ->values();
+                // Validate Cart
+                $cart = $user->cart;
 
-            $inventories = Inventory::whereIn(
+                if ($this->isCartEmpty($cart)) {
+                    return [
+                        'success' => false,
+                        'message' => 'Cart is empty'
+                    ];
+                }
+
+                $cartItems = $cart->cartItems()
+                    ->with('product.inventory')
+                    ->get();
+
+                /** @var Wallet $wallet */
+                $wallet = $user->wallet()
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($this->isWalletUnvalid($wallet)) {
+                    return [
+                        'success' => false,
+                        'message' => 'Wallet not found or inactive'
+                    ];
+                }
+
+                $productIds = $cartItems
+                    ->pluck('product_id')
+                    ->sort()
+                    ->values();
+
+                $inventories = Inventory::whereIn(
                     'product_id',
                     $productIds
                 )
-                ->orderBy('product_id')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('product_id');
+                    ->orderBy('product_id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('product_id');
 
-            $unavailable = collect();
+                $unavailable = collect();
 
-            foreach ($cartItems as $item) {
+                foreach ($cartItems as $item) {
 
-                $inventory = $inventories
-                    ->get($item->product_id);
+                    $inventory = $inventories
+                        ->get($item->product_id);
 
-                $stock = $inventory
-                    ? $inventory->quantity
-                    : 0;
+                    $stock = $inventory
+                        ? $inventory->quantity
+                        : 0;
 
-                if ($stock < $item->quantity) {
+                    if ($stock < $item->quantity) {
 
-                    $unavailable->push([
-                        'product_id' => $item->product_id,
-                        'product_name' => $item->product->name,
-                        'requested' => $item->quantity,
-                        'available' => $stock,
-                    ]);
+                        $unavailable->push([
+                            'product_id' => $item->product_id,
+                            'product_name' => $item->product->name,
+                            'requested' => $item->quantity,
+                            'available' => $stock,
+                        ]);
+                    }
                 }
-            }
 
-            if ($unavailable->isNotEmpty()) {
+                if ($unavailable->isNotEmpty()) {
+                    return [
+                        'success' => false,
+                        'message' => 'Some products are out of stock',
+                        'data' => $unavailable,
+                    ];
+                }
+
+                $amount = $cartItems->sum(
+                    fn($item) => $item->quantity * $item->product->price
+                );
+
+                if ($wallet->balance < $amount) {
+
+                    return [
+                        'success' => false,
+                        'message' => 'Insufficient wallet balance',
+                        'data' => [
+                            'required' => $amount,
+                            'available' => $wallet->balance,
+                            'shortage' => $amount - $wallet->balance,
+                        ],
+                    ];
+                }
+
+                // Create order
+                $order = $this->orderRepository->createOrder(
+                    $user,
+                    $cart,
+                    $amount,
+                    $data,
+                    $cartItems,
+                    $inventories
+                );
+                $perUserLock->release();
+
+                $transaction = $this->makeTransaction(
+                    $wallet,
+                    $amount,
+                    $order
+                );
+
+                $order->update([
+                    'payment_status' => 'paid'
+                ]);
+
+
                 return [
-                    'success' => false,
-                    'message' => 'Some products are out of stock',
-                    'data' => $unavailable,
-                ];
-            }
-
-            $amount = $cartItems->sum(
-                fn($item) =>
-                $item->quantity * $item->product->price
-            );
-
-            if ($wallet->balance < $amount) {
-
-                return [
-                    'success' => false,
-                    'message' => 'Insufficient wallet balance',
+                    'success' => true,
+                    'message' => 'Payment completed successfully',
                     'data' => [
-                        'required' => $amount,
-                        'available' => $wallet->balance,
-                        'shortage' => $amount - $wallet->balance,
+                        'order' => $order,
+                        'transaction' => $transaction,
+                        'wallet_balance' => $wallet->fresh()->balance,
                     ],
                 ];
+            });
+
+            $executionTime = microtime(true) - $startTime;
+
+            Log::info('Checkout execution time', [
+                'time_seconds' => $executionTime,
+            ]);
+            if ($res['success']) {
+                GenerateInvoicePdfJob::dispatch(
+                    $res['data']['order']->id
+                );
             }
 
-            // Create order
-            $order = $this->orderRepository->createOrder(
-                $user,
-                $cart,
-                $amount,
-                $data,
-                $cartItems,
-                $inventories
-            );
+            return $res;
+
+        } finally {
+
             $perUserLock->release();
-
-            $transaction = $this->makeTransaction(
-                $wallet,
-                $amount,
-                $order
-            );
-
-            $order->update([
-                'payment_status' => 'paid'
-            ]);
-
-
-            return [
-                'success' => true,
-                'message' => 'Payment completed successfully',
-                'data' => [
-                    'order' => $order,
-                    'transaction' => $transaction,
-                    'wallet_balance' => $wallet->fresh()->balance,
-                ],
-            ];
-        });
-
-        $executionTime = microtime(true) - $startTime;
-
-Log::info('Checkout execution time', [
-    'time_seconds' => $executionTime,
-]);
-        if ($res['success']) {
-            GenerateInvoicePdfJob::dispatch(
-                $res['data']['order']->id
-            );
         }
-
-        return $res;
-
-    } finally {
-
-        $perUserLock->release();
     }
-}
 
 
     /**
