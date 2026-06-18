@@ -25,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserIsAdmin::class,
         ]);
     })
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
