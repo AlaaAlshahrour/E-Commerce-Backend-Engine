@@ -1,6 +1,7 @@
 <?php
 
 use App\Helpers\ResponseHelper;
+use App\Http\Middleware\ApiEndpointLoggerMiddleware;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
+        $middleware->api(append: [
+            ApiEndpointLoggerMiddleware::class,
+        ]);
+
         $middleware->throttleWithRedis();
 
         $middleware->alias([
@@ -25,6 +30,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+
+        $exceptions->report(function (Throwable $e) {
+            $request = request();
+
+            Log::channel('error_logs')->error('An unhandled exception occurred.', [
+                'message'   => $e->getMessage(),
+                'file'      => $e->getFile(),
+                'line'      => $e->getLine(),
+                'endpoint'  => $request->fullUrl(),
+                'method'    => $request->method(),
+                'user_id'   => $request->user() ? $request->user()->id : 'Guest',
+                'trace'     => collect($e->getTrace())->take(5)->toArray(),
+            ]);
+        });
+
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ResponseHelper::jsonResponse(null, 'Unauthenticated.', 401, false);
