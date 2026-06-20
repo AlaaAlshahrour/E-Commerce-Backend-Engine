@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 
 class CategoryController extends Controller
 {
@@ -15,7 +17,9 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::all();
+        $categories = Cache::remember('categories:all', now()->addHour(), function () {
+            return Category::all()->toArray();
+        });
 
         return ResponseHelper::jsonResponse($categories, 'Categories retrieved successfully');
     }
@@ -26,6 +30,10 @@ class CategoryController extends Controller
     public function store(StoreCategoryRequest $request)
     {
         $category = Category::create($request->validated());
+
+        // Cache Invalidation
+        Cache::forget('categories:all');
+        $this->clearProductListCache();
 
         return ResponseHelper::jsonResponse($category, 'Category created successfully', 201);
     }
@@ -45,6 +53,10 @@ class CategoryController extends Controller
     {
         $category->update($request->validated());
 
+        // Cache Invalidation
+        Cache::forget('categories:all');
+        $this->clearProductListCache();
+
         return ResponseHelper::jsonResponse($category, 'Category updated successfully');
     }
 
@@ -55,6 +67,26 @@ class CategoryController extends Controller
     {
         $category->delete();
 
+        // Cache Invalidation
+        Cache::forget('categories:all');
+        $this->clearProductListCache();
         return ResponseHelper::jsonResponse(null, 'Category deleted successfully');
+    }
+
+    /**
+     * Clear product listing cache keys stored in Redis set 'products:list:keys'
+     */
+    private function clearProductListCache(): void
+    {
+        try {
+            $redis = Redis::connection(config('cache.stores.redis.connection'));
+            $keys = $redis->smembers('products:list:keys') ?: [];
+            foreach ($keys as $key) {
+                Cache::forget($key);
+            }
+            $redis->del('products:list:keys');
+        } catch (\Exception $e) {
+            // Ignore errors to ensure availability
+        }
     }
 }

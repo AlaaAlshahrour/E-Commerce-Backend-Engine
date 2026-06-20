@@ -25,11 +25,6 @@ class ChunkedSalesProcessor
     {
         $executionStartTime = microtime(true);
 
-        // ════════════════════════════════════════════════════════════
-        //  قياسات الذاكرة — البداية
-        //  false = الذاكرة الفعلية التي يستخدمها PHP لتخزين البيانات
-        //  true  = الذاكرة المُخصَّصة من نظام التشغيل (صفحات 4KB)
-        // ════════════════════════════════════════════════════════════
         $mem_start_real = memory_get_usage(false);
         $mem_start_alloc = memory_get_usage(true);
 
@@ -62,9 +57,6 @@ class ChunkedSalesProcessor
 
         $executionTime = round(microtime(true) - $executionStartTime, 4);
 
-        // ════════════════════════════════════════════════════════════
-        //  تسجيل كل القياسات في الـ Log
-        // ════════════════════════════════════════════════════════════
         Log::info('========== Chunked Processing Completed ==========');
         Log::info("Total Orders: {$this->totalOrders}");
         Log::info("Total Revenue: {$this->totalRevenue}");
@@ -112,7 +104,6 @@ class ChunkedSalesProcessor
                 'delta_alloc_mb' => round($delta_alloc / 1024 / 1024, 4),
             ],
 
-            // للتوافق مع الكود القديم (يُبقي peak_memory و memory_used تعمل)
             'peak_memory' => round($peak_alloc / 1024 / 1024, 4),
             'memory_used' => round($delta_real / 1024 / 1024, 4),
         ];
@@ -146,11 +137,9 @@ class ChunkedSalesProcessor
             'orders_count' => $orders->count(),
             'execution_time' => $batchExecutionTime,
 
-            // القياسات القديمة (للتوافق مع blade الحالي)
             'memory_before' => round($mem_before_alloc / 1024 / 1024, 4),
             'memory_after' => round($mem_after_alloc / 1024 / 1024, 4),
 
-            // القياسات الجديدة (الفعلية)
             'memory_before_real_mb' => round($mem_before_real / 1024 / 1024, 4),
             'memory_after_real_mb' => round($mem_after_real / 1024 / 1024, 4),
             'memory_delta_real_mb' => round(($mem_after_real - $mem_before_real) / 1024 / 1024, 4),

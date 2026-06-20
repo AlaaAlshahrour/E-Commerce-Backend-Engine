@@ -21,8 +21,7 @@ class OrderController extends Controller
             return ResponseHelper::jsonResponse(null,$result['message'],  404, false);
         }
 
-
-        return ResponseHelper::jsonResponse($result['data'],$result['message']);
+        return ResponseHelper::jsonResponse($result['data'], $result['message'] ?? 'Success');
     }
 
 
@@ -35,7 +34,7 @@ class OrderController extends Controller
         }
 
 
-        return ResponseHelper::jsonResponse($result['data'],$result['message']);
+        return ResponseHelper::jsonResponse($result['data'], $result['message'] ?? 'Success');
     }
 
     public function updateStatus(int $id, Request $request)

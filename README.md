@@ -1,58 +1,343 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# E-Commerce Backend Engine
+### Parallel Programming & Concurrent Systems Project
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+> A scalable E-Commerce Backend API built with **Laravel**, focusing on parallel programming concepts, thread safety, load balancing, batch processing, and asynchronous job execution.
 
-## About Laravel
+The project demonstrates how concurrent systems behave under heavy load and how synchronization mechanisms can prevent race conditions and inconsistent data states.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🚀 Project Overview
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+This project simulates a real-world e-commerce backend system with advanced concurrency handling techniques and distributed processing concepts.
 
-## Learning Laravel
+The system includes:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- User authentication & authorization
+- Product & category management
+- Shopping cart system
+- Wallet & payment processing
+- Order checkout workflow
+- Inventory management
+- Invoice PDF generation
+- Daily sales report processing
+- Load balancing between multiple nodes
+- Queue-based asynchronous processing
+- Batch processing for large datasets
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The implementation was designed to compare **unsafe concurrent execution** versus **safe synchronized execution** using database locks, cache locks, and queued background jobs.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 🧠 Main Parallel Programming Concepts
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Concurrent Access & Thread Safety
 
-```bash
-composer require laravel/boost --dev
+The project demonstrates several race condition scenarios and their solutions:
 
-php artisan boost:install
+**✔ Safe vs Unsafe Checkout**
+
+Implemented using:
+- `DB::transaction()`
+- `lockForUpdate()`
+- `Cache::lock()`
+
+This prevents:
+- Double checkout
+- Overselling products
+- Wallet balance corruption
+- Simultaneous inventory modification
+
+**Example from the project:**
+
+```php
+$wallet = $user->wallet()->lockForUpdate()->first();
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+```php
+$perUserLock = Cache::lock("checkout:user:{$user->id}");
+```
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Messaging Queues & Asynchronous Processing
 
-## Code of Conduct
+The system uses **Laravel Queues** to execute heavy tasks asynchronously.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**Background Jobs:**
+- Invoice PDF generation
+- Daily sales report processing
 
-## Security Vulnerabilities
+Implemented using:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```php
+class GenerateInvoicePdfJob implements ShouldQueue
+```
 
-## License
+```php
+class ProcessDailySalesJob implements ShouldQueue
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This improves:
+- API responsiveness
+- User experience
+- Scalability under load
+
+---
+
+### 3. Batch Processing
+
+The project compares:
+- Normal processing
+- Chunked batch processing
+
+**Chunked Processing** — implemented using:
+
+```php
+chunkById(1000, function($orders) {
+    ...
+});
+```
+
+The batch processor reduces:
+- Peak memory consumption
+- Large dataset loading overhead
+
+It also measures:
+- Execution time
+- Memory usage
+- Batch statistics
+
+---
+
+### 4. Load Balancing & Scaling
+
+The project simulates multiple application nodes:
+- Node-1
+- Node-2
+- Node-3
+
+A custom controller manages node health and recovery:
+
+```php
+docker start
+docker stop
+```
+
+This demonstrates:
+- Distributed system behavior
+- Fault tolerance
+- Node recovery
+- Basic load balancing strategies
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | PHP 8+, Laravel 12 |
+| **Database** | MySQL |
+| **Queue & Async** | Laravel Queue System |
+| **Authentication** | Laravel Sanctum |
+| **PDF Generation** | barryvdh/laravel-dompdf |
+| **Containers** | Docker |
+
+---
+
+## 📦 Main Features
+
+### Authentication
+- Register / Login / Logout
+- Token authentication
+
+### Products & Categories
+- CRUD operations
+- Pagination
+- Search & filtering
+
+### Shopping Cart
+- Add products
+- Update quantities
+- Remove products
+- Prevent duplicate entries
+
+### Wallet System
+- Top-up balance
+- Transaction history
+- Payment handling
+
+### Orders
+- Checkout flow
+- Payment processing
+- Invoice generation
+
+### Inventory Management
+- Safe stock updates
+- Concurrent inventory protection
+
+### Reporting
+- Daily sales report generation
+- Batch vs normal processing comparison
+- PDF export
+
+---
+
+## ⚙️ Installation
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/your-username/e-commerce-backend-engine.git
+```
+
+### 2. Install Dependencies
+```bash
+composer install
+```
+
+### 3. Configure Environment
+```bash
+cp .env.example .env
+```
+> Update database credentials inside `.env`
+
+### 4. Generate Application Key
+```bash
+php artisan key:generate
+```
+
+### 5. Run Migrations & Seeders
+```bash
+php artisan migrate:fresh --seed
+```
+
+### 6. Create Storage Link
+```bash
+php artisan storage:link
+```
+
+### 7. Start Queue Worker
+```bash
+php artisan queue:work
+```
+
+### 8. Run Application
+```bash
+php artisan serve
+```
+
+---
+
+## 🧪 Testing Concurrent Scenarios
+
+The project contains special seeders for race condition demonstrations:
+
+| Seeder | Purpose |
+|---|---|
+| `RaceSameProductSeeder` | Overselling simulation |
+| `RaceDoubleCheckoutSeeder` | Double checkout race |
+| `RaceInventoryAdminCustomerSeeder` | Admin/customer inventory conflict |
+| `RaceAddToCartSeeder` | Duplicate cart insertion |
+| `RaceCartUpdateSeeder` | Concurrent cart updates |
+
+Run a specific seeder:
+
+```bash
+php artisan db:seed --class=RaceSameProductSeeder
+```
+
+---
+
+## 📊 Performance Monitoring
+
+The batch processing system measures:
+- Peak memory usage
+- Execution time
+- Batch count
+- Revenue statistics
+- Order statistics
+
+This allows direct comparison between:
+- Traditional processing
+- Parallel / chunked processing
+
+---
+
+## 🔒 Security & Protection
+
+The system includes:
+- Rate limiting
+- Request validation
+- Role-based authorization
+- Transaction safety
+- Database locking
+- Cache locking
+
+**Example rate limiters:**
+
+```php
+RateLimiter::for('checkout', function(Request $request) {
+    return Limit::perMinute(5);
+});
+```
+
+---
+
+## 📁 Project Architecture
+
+The project follows Laravel's layered architecture:
+
+```
+Controllers
+│
+├── Services
+│   └── Business Logic
+│
+├── Repositories
+│
+├── Jobs
+│
+├── Processors
+│
+└── Models
+```
+
+This separation improves:
+- Scalability
+- Maintainability
+- Testability
+
+---
+
+## 👥 Team Members
+
+- عبد الرحمن مالك الجمعات
+- محمد علاء عبد الرحمن الشحرور
+- منار ماهر عجاج الكردي
+- عبد الله محمد خير الكسم
+- محمد علاء الدين عايدي
+
+**Supervisor:** 
+
+م. حذيفة عقيل
+
+---
+
+## 📚 Educational Purpose
+
+This project was developed as part of the **Parallel Programming** course to demonstrate practical applications of:
+
+- Concurrent programming
+- Synchronization
+- Distributed systems
+- Queue systems
+- Batch processing
+- Load balancing
+- Thread safety
+- Performance optimization
+
+---
+
+## 📄 License
+
+This project is intended for **educational and academic purposes only**.

@@ -20,9 +20,6 @@ class NormalSalesProcessor
     {
         $this->executionStartTime = microtime(true);
 
-        // ════════════════════════════════════════════════════════════
-        //  قياسات الذاكرة — البداية (قبل أي شيء)
-        // ════════════════════════════════════════════════════════════
         $mem_start_real = memory_get_usage(false);
         $mem_start_alloc = memory_get_usage(true);
 
@@ -37,10 +34,6 @@ class NormalSalesProcessor
         $dayStart = Carbon::parse($date)->startOfDay();
         $dayEnd = Carbon::parse($date)->endOfDay();
 
-        // ════════════════════════════════════════════════════════════
-        //  نقطة القياس: قبل get() مباشرةً
-        //  هذا السطر هو الذي يُحمّل كل الـ orders + relations دفعةً واحدة
-        // ════════════════════════════════════════════════════════════
         $mem_before_get_real = memory_get_usage(false);
         $mem_before_get_alloc = memory_get_usage(true);
 
@@ -55,9 +48,6 @@ class NormalSalesProcessor
             ->with('orderItems.product')
             ->get();
 
-        // ════════════════════════════════════════════════════════════
-        //  نقطة القياس: بعد get() — هنا نرى التأثير الحقيقي لتحميل البيانات
-        // ════════════════════════════════════════════════════════════
         $mem_after_get_real = memory_get_usage(false);
         $mem_after_get_alloc = memory_get_usage(true);
 
@@ -84,9 +74,6 @@ class NormalSalesProcessor
             ];
         }
 
-        // ════════════════════════════════════════════════════════════
-        //  نقطة القياس: قبل المعالجة (الـ foreach)
-        // ════════════════════════════════════════════════════════════
         $mem_before_loop_real = memory_get_usage(false);
         $mem_before_loop_alloc = memory_get_usage(true);
 
@@ -96,26 +83,19 @@ class NormalSalesProcessor
             $this->ordersData[] = $this->formatOrder($order);
         }
 
-        // ════════════════════════════════════════════════════════════
-        //  قياسات الذاكرة — النهاية (بعد اكتمال كل المعالجة)
-        // ════════════════════════════════════════════════════════════
         $mem_end_real = memory_get_usage(false);
         $mem_end_alloc = memory_get_usage(true);
 
         // الذروة الحقيقية — أعلى نقطة وصل إليها PHP خلال كامل التنفيذ
-        $peak_real = memory_get_peak_usage(false);   // ← الرقم الحقيقي
-        $peak_alloc = memory_get_peak_usage(true);    // ← ما يظهر في OS monitor
+        $peak_real = memory_get_peak_usage(false);
+        $peak_alloc = memory_get_peak_usage(true);
 
-        // الفروقات الصافية
         $delta_total_real = $mem_end_real - $mem_start_real;   // إجمالي ما استُهلك
         $delta_get_real = $mem_after_get_real - $mem_before_get_real;  // تكلفة get() وحده
         $delta_loop_real = $mem_end_real - $mem_before_loop_real;       // تكلفة الـ foreach
 
         $executionTime = round(microtime(true) - $this->executionStartTime, 4);
 
-        // ════════════════════════════════════════════════════════════
-        //  تسجيل كامل في الـ Log
-        // ════════════════════════════════════════════════════════════
         Log::info('========== Normal Processing Completed ==========');
         Log::info("Total Orders: {$this->totalOrders}");
         Log::info("Total Revenue: {$this->totalRevenue}");
@@ -148,7 +128,6 @@ class NormalSalesProcessor
             'orders_data' => $this->ordersData,
             'skipped' => false,
 
-            // ── القياسات الشاملة ──────────────────────────────────────────
             'memory_stats' => [
                 // نقاط قياس مرتّبة زمنياً
                 'start_real_mb' => round($mem_start_real / 1024 / 1024, 4),
@@ -175,7 +154,6 @@ class NormalSalesProcessor
                 'delta_loop_real_mb' => round($delta_loop_real / 1024 / 1024, 4),
             ],
 
-            // للتوافق مع الكود القديم
             'peak_memory' => round($peak_alloc / 1024 / 1024, 4),
             'memory_used' => round($delta_total_real / 1024 / 1024, 4),
         ];
