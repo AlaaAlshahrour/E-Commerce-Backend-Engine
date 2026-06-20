@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "{{base_url}}/cart/add/21"
+  url: "{{base_url}}/cart/add/1"
   body:
     type: multipart-form
     data:

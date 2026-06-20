@@ -4,8 +4,8 @@ info:
   seq: 5
 
 http:
-  method: PATCH
-  url: "{{base_url}}/cart/update/3"
+  method: POST
+  url: "{{base_url}}/cart/update/1"
   body:
     type: multipart-form
     data:

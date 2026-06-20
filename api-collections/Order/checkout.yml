@@ -5,7 +5,11 @@ info:
 
 http:
   method: POST
-  url: "{{base_url}}/orders/checkout"
+  url: "{{base_url}}/orders/checkout?safe=1"
+  params:
+    - name: safe
+      value: "1"
+      type: query
   body:
     type: multipart-form
     data:

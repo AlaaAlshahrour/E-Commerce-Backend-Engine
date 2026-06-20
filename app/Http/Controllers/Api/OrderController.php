@@ -56,7 +56,7 @@ class OrderController extends Controller
     {
         $data = $request->validated();
         $safe = $request->query('safe') == "1";
-
+        if(!isset($data['break-trans'])) $data['break-trans'] = null;
         try{
 
         $result = $safe ? $this->orderService->checkoutSafeOptimized($data)
