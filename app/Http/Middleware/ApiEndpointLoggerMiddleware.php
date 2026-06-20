@@ -9,18 +9,18 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiEndpointLoggerMiddleware
 {
-    private $startTime;
-
     public function handle(Request $request, Closure $next): Response
     {
-        $this->startTime = microtime(true);
+        $request->attributes->set('log_start_time', microtime(true));
 
         return $next($request);
     }
 
     public function terminate(Request $request, Response $response): void
     {
-        $duration = $this->startTime ? round((microtime(true) - $this->startTime) * 1000, 2) : 0;
+        $start = $request->attributes->get('log_start_time');
+
+        $duration = $start ? round((microtime(true) - $start) * 1000, 2) : 0;
 
         $logData = [
             'ip'          => $request->ip(),
