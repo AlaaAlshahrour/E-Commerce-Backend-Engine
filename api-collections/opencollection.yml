@@ -25,7 +25,7 @@ request:
     - name: id
       value: "1"
     - name: base_url
-      value: localhost/api
+      value: http://127.0.0.1:8000/api
 
 docs:
   content: |-
