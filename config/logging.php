@@ -127,18 +127,75 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
-        'api_endpoints' => [
+        // === Endpoint-specific channels ===
+        'auth_logs' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/endpoints/api.log'),
+            'path'   => storage_path('logs/auth.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'cart_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/cart.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'products_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/products.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'orders_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/orders.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'inventory_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/inventory.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'wallet_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/wallet.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'nodes_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/nodes.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+        'reports_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/reports.log'),
+            'level'  => 'info',
+            'days'   => 14,
+        ],
+
+        'others_logs' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/endpoints/others.log'),
             'level' => 'info',
             'days' => 14,
         ],
 
+        'warning_logs' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/warnings.log'),
+            'level'  => 'warning',
+            'days'   => 14,
+        ],
+
         'error_logs' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/errors/error_logs.log'),
-            'level' => 'error',
-            'days' => 30,
+            'path'   => storage_path('logs/errors.log'),
+            'level'  => 'error',
+            'days'   => 30,
         ],
 
     ],
