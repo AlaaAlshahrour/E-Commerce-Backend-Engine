@@ -11,7 +11,7 @@ use App\Models\Wallet;
 
 $lines = [];
 
-for ($i = 1; $i <= 1100; $i++) {
+for ($i = 1; $i <= 5000; $i++) {
     $user = User::firstOrCreate(
         ['email' => "loadtest{$i}@test.local"],
         [
