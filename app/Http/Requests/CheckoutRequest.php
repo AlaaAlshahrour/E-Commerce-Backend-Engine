@@ -25,6 +25,7 @@ class CheckoutRequest extends FormRequest
         return [
             'shipping_address' => 'required|string|min:5|max:500',
             'safe'=>'sometimes',
+            'break-trans'=>'sometimes',
         ];
     }
 }

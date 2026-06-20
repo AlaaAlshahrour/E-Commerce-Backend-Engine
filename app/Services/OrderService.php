@@ -142,7 +142,9 @@ class OrderService
 
         $order = $this->orderRepository->createOrder($user, $cart, $amount, $data, $cartItems, $inventories);
 
-
+        if($data['break-trans']){
+            throw new \RuntimeException('Simulated crash mid-transaction');
+        }
         $transaction = $this->makeTransaction($wallet, $amount, $order);
 
 
@@ -318,6 +320,180 @@ class OrderService
         }
     }
 
+    public function checkoutSafeOptimized(array $data): array
+    {
+        $user = Auth::user();
+
+        $perUserLock = Cache::lock("checkout:user:{$user->id}", 10);
+
+        if (!$perUserLock->get()) {
+            return ['success' => false, 'message' => 'Checkout already in progress'];
+        }
+
+        try {
+            return $this->withRetry(function () use ($data, $user) {
+                $startTime = microtime(true);
+
+                $cart = $user->cart;
+                if ($this->isCartEmpty($cart)) {
+                    return ['success' => false, 'message' => 'Cart is empty'];
+                }
+
+
+                $cartItems = $cart->cartItems()->with('product')->get();
+
+                $wallet = $user->wallet()->first();
+                if ($this->isWalletUnvalid($wallet)) {
+                    return ['success' => false, 'message' => 'Wallet not found or inactive'];
+                }
+
+                $productIds = $cartItems->pluck('product_id')->sort()->values();
+
+                $inventories = Inventory::whereIn('product_id', $productIds)
+                    ->orderBy('product_id')
+                    ->get()
+                    ->keyBy('product_id');
+
+
+                $walletVersion = $wallet->updated_at->toISOString();
+                $inventoryVersions = $inventories->mapWithKeys(
+                    fn($inv) => [$inv->product_id => $inv->updated_at->toISOString()]
+                );
+
+
+                $unavailable = collect();
+                foreach ($cartItems as $item) {
+                    $inventory = $inventories->get($item->product_id);
+                    $stock = $inventory?->quantity ?? 0;
+                    if ($stock < $item->quantity) {
+                        $unavailable->push([
+                            'product_id' => $item->product_id,
+                            'product_name' => $item->product->name,
+                            'requested' => $item->quantity,
+                            'available' => $stock,
+                        ]);
+                    }
+                }
+                if ($unavailable->isNotEmpty()) {
+                    return ['success' => false, 'message' => 'Some products are out of stock', 'data' => $unavailable];
+                }
+
+                $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
+
+                if ($wallet->balance < $amount) {
+                    return [
+                        'success' => false,
+                        'message' => 'Insufficient wallet balance',
+                        'data' => [
+                            'required' => $amount,
+                            'available' => $wallet->balance,
+                            'shortage' => $amount - $wallet->balance,
+                        ],
+                    ];
+                }
+
+
+                $res = DB::transaction(function () use (
+                    $data, $user, $cart, $cartItems, $productIds,
+                    $amount, $walletVersion, $inventoryVersions
+                ) {
+
+                    $wallet = $user->wallet()->lockForUpdate()->first();
+
+
+                    if ($wallet->updated_at->toISOString() !== $walletVersion) {
+                        throw new \RuntimeException('Wallet was modified during checkout. Please retry.');
+                    }
+
+
+                    $inventories = Inventory::whereIn('product_id', $productIds)
+                        ->orderBy('product_id')
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('product_id');
+
+
+                    foreach ($inventories as $productId => $inventory) {
+                        $knownVersion = $inventoryVersions->get($productId);
+                        if ($inventory->updated_at->toISOString() !== $knownVersion) {
+                            throw new \RuntimeException(
+                                "Something Went Wrong. Please retry."
+                            );
+                        }
+                    }
+
+
+                    $order = $this->orderRepository->createOrder(
+                        $user, $cart, $amount, $data, $cartItems, $inventories
+                    );
+                    if($data['break-trans']){
+                        throw new \RuntimeException('Simulated crash mid-transaction');
+                    }
+                    $transaction = $this->makeTransaction($wallet, $amount, $order);
+
+                    $order->update(['payment_status' => 'paid']);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Payment completed successfully',
+                        'data' => [
+                            'order' => $order,
+                            'transaction' => $transaction,
+                            'wallet_balance' => $wallet->fresh()->balance,
+                        ],
+                    ];
+                });
+
+                Log::info('Checkout execution time', [
+                    'time_seconds' => microtime(true) - $startTime,
+                ]);
+
+                if ($res['success']) {
+                    GenerateInvoicePdfJob::dispatch($res['data']['order']->id);
+                }
+
+                return $res;
+            });
+        } finally {
+            $perUserLock->release();
+        }
+    }
+
+    private function withRetry(callable $operation, int $maxAttempts = 3): array
+    {
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $maxAttempts) {
+            $attempt++;
+            try {
+                $result = $operation();
+                return $result;
+
+            } catch (\RuntimeException $e) {
+                $lastException = $e;
+
+                Log::warning("Checkout attempt {$attempt} failed", [
+                    'reason' => $e->getMessage(),
+                    'attempt' => $attempt,
+                    'max' => $maxAttempts,
+                ]);
+
+                if ($attempt < $maxAttempts) {
+                    usleep(random_int(50, 150) * 1000);
+                }
+
+            } catch (Throwable $e) {
+                Log::error('Something Went Wrong', ['error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Checkout failed. Please try again.'];
+            }
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Checkout failed after multiple attempts: ' . $lastException->getMessage(),
+        ];
+    }
 
     /**
      * @param Wallet $wallet

@@ -33,7 +33,6 @@ class OrderRepository
     }
 
 
-
     public function createOrder(User $user, Cart $cart, $totalAmount, array $data, Collection $cartItems, Collection $inventories): Order
     {
 
@@ -54,19 +53,19 @@ class OrderRepository
         $order->orderItems()->createMany($orderItems);
 
         foreach ($cartItems as $item) {
-            $inventory = $inventories->get($item->product_id);
-            $inventory->quantity -= $item->quantity;
-            $inventory->save();
+            $inventories->get($item->product_id)->decrement('quantity', $item->quantity);
         }
 
+        $order->load('orderItems.product:id,name,photo_url');
         $cart->cartItems()->delete();
 
-        return $order->load('orderItems.product:id,name,photo_url');
+        return $order;
 
     }
+
     public function updateStatus(Order $order, string $status): Order
     {
-        $order->status =  $status;
+        $order->status = $status;
         $order->save();
         return $order->fresh();
     }

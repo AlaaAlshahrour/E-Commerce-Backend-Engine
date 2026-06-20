@@ -58,7 +58,9 @@ class OrderController extends Controller
         $data = $request->validated();
         $safe = $request->query('safe') == "1";
 
-        $result = $safe ? $this->orderService->checkoutSafe($data)
+        try{
+
+        $result = $safe ? $this->orderService->checkoutSafeOptimized($data)
             : $this->orderService->checkoutUnsafe($data);
 
         if (!$result['success']) {
@@ -67,5 +69,9 @@ class OrderController extends Controller
         }
 
         return ResponseHelper::jsonResponse($result['data'], $result['message'], 201);
+        }
+        catch (\Exception $e) {
+            return ResponseHelper::jsonResponse(null, $e->getMessage(), 500, false);
+        }
     }
 }
