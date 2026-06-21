@@ -490,6 +490,124 @@ class OrderService
             'message' => 'Checkout failed after multiple attempts: ' . $lastException->getMessage(),
         ];
     }
+    public function checkoutSync(array $data): array
+    {
+        $user = Auth::user();
+
+        $perUserLock = Cache::lock("checkout:user:{$user->id}");
+
+        if (!$perUserLock->get()) {
+            return [
+                'success' => false,
+                'message' => 'Checkout in progress'
+            ];
+        }
+
+        $startTime = microtime(true);
+
+        try {
+            $res = DB::transaction(function () use ($data, $perUserLock, $user) {
+
+                $cart = $user->cart;
+
+                if ($this->isCartEmpty($cart)) {
+                    return ['success' => false, 'message' => 'Cart is empty'];
+                }
+
+                $cartItems = $cart->cartItems()->with('product.inventory')->get();
+
+                $wallet = $user->wallet()->lockForUpdate()->first();
+
+                if ($this->isWalletUnvalid($wallet)) {
+                    return ['success' => false, 'message' => 'Wallet not found or inactive'];
+                }
+
+                $productIds = $cartItems->pluck('product_id')->sort()->values();
+
+                $inventories = Inventory::whereIn('product_id', $productIds)
+                    ->orderBy('product_id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('product_id');
+
+                $unavailable = collect();
+
+                foreach ($cartItems as $item) {
+                    $inventory = $inventories->get($item->product_id);
+                    $stock = $inventory ? $inventory->quantity : 0;
+
+                    if ($stock < $item->quantity) {
+                        $unavailable->push([
+                            'product_id'   => $item->product_id,
+                            'product_name' => $item->product->name,
+                            'requested'    => $item->quantity,
+                            'available'    => $stock,
+                        ]);
+                    }
+                }
+
+                if ($unavailable->isNotEmpty()) {
+                    return [
+                        'success' => false,
+                        'message' => 'Some products are out of stock',
+                        'data' => $unavailable,
+                    ];
+                }
+
+                $amount = $cartItems->sum(fn($item) => $item->quantity * $item->product->price);
+
+                if ($wallet->balance < $amount) {
+                    return [
+                        'success' => false,
+                        'message' => 'Insufficient wallet balance',
+                        'data' => [
+                            'required'  => $amount,
+                            'available' => $wallet->balance,
+                            'shortage'  => $amount - $wallet->balance,
+                        ],
+                    ];
+                }
+
+                $order = $this->orderRepository->createOrder(
+                    $user, $cart, $amount, $data, $cartItems, $inventories
+                );
+
+                $perUserLock->release();
+
+                $transaction = $this->makeTransaction($wallet, $amount, $order);
+
+                $order->update(['payment_status' => 'paid']);
+
+                $pdfStartTime = microtime(true);
+
+                app(InvoiceService::class)->generateInvoicePdf($order);
+
+                Log::info('Invoice generation time (sync/inline)', [
+                    'order_id'     => $order->id,
+                    'time_seconds' => microtime(true) - $pdfStartTime,
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Payment completed successfully',
+                    'data' => [
+                        'order'          => $order,
+                        'transaction'    => $transaction,
+                        'wallet_balance' => $wallet->fresh()->balance,
+                    ],
+                ];
+            });
+
+            Log::info('Checkout execution time (sync)', [
+                'time_seconds' => microtime(true) - $startTime,
+            ]);
+
+            return $res;
+
+        } finally {
+            $perUserLock->release();
+        }
+    }
 
     /**
      * @param Wallet $wallet

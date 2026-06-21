@@ -2,7 +2,9 @@
 
 > Run these in order: `migrate:fresh` → seed → `k6 run`
 > Prepend `sudo` to sudo docker/k6 commands if your machine requires it.
-
+```bash
+sudo docker compose up -d
+```
 ---
 ### PDF GENERATE
 ```bash
@@ -22,12 +24,18 @@ k6 run tests/k6-final/checkout-pdf.js
 ```bash
 # unsafe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
+```
+
+```bash
 k6 run tests/k6-final/double-checkout-unsafe.js
 ```
 
 ```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
+```
+
+```bash
 k6 run tests/k6-final/double-checkout-safe.js
 ```
 
@@ -38,11 +46,17 @@ k6 run tests/k6-final/double-checkout-safe.js
 ```bash
 # unsafe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceSameProductSeeder
+```
+
+```bash
 k6 run tests/k6-final/same-product-unsafe.js
 ```
 ```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceSameProductSeeder
+```
+
+```bash
 k6 run tests/k6-final/same-product-safe.js
 ```
 
@@ -53,11 +67,17 @@ k6 run tests/k6-final/same-product-safe.js
 ```bash
 # unsafe (overselling expected)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceRetrySeeder
+```
+
+```bash
 k6 run tests/k6-final/retry-race-unsafe.js
 ```
 ```bash
 # safe (optimistic lock + retry)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceRetrySeeder
+```
+
+```bash
 k6 run tests/k6-final/retry-race-safe.js
 ```
 
@@ -70,11 +90,17 @@ k6 run tests/k6-final/retry-race-safe.js
 ```bash
 # unsafe (partial write — incoherent DB)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=AcidTestSeeder
+```
+
+```bash
 k6 run tests/k6-final/acid-unsafe.js
 ```
 ```bash
 # safe (full rollback — pristine DB)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=AcidTestSeeder
+```
+
+```bash
 k6 run tests/k6-final/acid-safe.js
 ```
 
@@ -116,6 +142,9 @@ k6 run tests/k6-final/multinode-double-checkout.js
 
 ```bash
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceAddToCartSeeder
+```
+
+```bash
 k6 run tests/k6-final/add-to-cart.js
 ```
 
@@ -126,11 +155,17 @@ k6 run tests/k6-final/add-to-cart.js
 ```bash
 # unsafe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceCartUpdateSeeder
+```
+
+```bash
 k6 run tests/k6-final/cart-update-unsafe.js
 ```
 ```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceCartUpdateSeeder
+```
+
+```bash
 k6 run tests/k6-final/cart-update-safe.js
 ```
 
@@ -143,11 +178,17 @@ k6 run tests/k6-final/cart-update-safe.js
 ```bash
 # unsafe (admin write silently overwrites checkout deduction)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceInventoryAdminCustomerSeeder
+```
+
+```bash
 k6 run tests/k6-final/admin-inventory-race-unsafe.js
 ```
 ```bash
 # safe (admin blocked while checkout in progress)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceInventoryAdminCustomerSeeder
+```
+
+```bash
 k6 run tests/k6-final/admin-inventory-race-safe.js
 ```
 

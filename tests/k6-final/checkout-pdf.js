@@ -66,7 +66,7 @@ export default function (data) {
     console.log('══════════════════════════════════════════');
 
     const res = http.post(
-        `${BASE_URL}/api/orders/checkout?safe=1`,
+        `${BASE_URL}/api/orders/checkout?safe=1&pdf-sync=1`,
         JSON.stringify({ shipping_address: 'Damascus' }),
         { headers }
     );

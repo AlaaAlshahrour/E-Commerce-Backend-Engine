@@ -56,11 +56,12 @@ class OrderController extends Controller
     {
         $data = $request->validated();
         $safe = $request->query('safe') == "1";
+        $sync = $request->query('pdf-sync') == "1";
         if(!isset($data['break-trans'])) $data['break-trans'] = null;
         try{
 
         $result = $safe ? $this->orderService->checkoutSafeOptimized($data)
-            : $this->orderService->checkoutUnsafe($data);
+            : ($sync ? $this->orderService->checkoutSync($data): $this->orderService->checkoutUnsafe($data));
 
         if (!$result['success']) {
             $message = isset($result['message']) ? $result['message'] : 'An error occurred';
