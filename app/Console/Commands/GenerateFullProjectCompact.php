@@ -21,60 +21,51 @@ class GenerateFullProjectCompact extends Command
         $content = "// === FULL PROJECT COMPACT EXPORT ===\n";
 
         $sections = [
-            'Controllers' => app_path('Http/Controllers'),
-            //            'ApiControllers' => app_path('Http/Controllers/Api'),
-            'Services' => app_path('Services'),
-            'Models' => app_path('Models'),
-            'Enums' => app_path('Enums'),
-            'Providers' => app_path('Providers'),
-            'Resources' => app_path('Http/Resources'),
-            'Requests' => app_path('Http/Requests'),
-            'Repositories' => app_path('Repositories'),
-            'Helpers' => app_path('Helpers'),
-            'Middleware' => app_path('Http/Middleware'),
-            'Jobs' => app_path('Jobs'),
-            'Processors' => app_path('Processors'),
             'Console' => app_path('Console'),
+            'Enums' => app_path('Enums'),
+            'Helpers' => app_path('Helpers'),
+            'Controllers' => app_path('Http/Controllers'),
+            'Middleware' => app_path('Http/Middleware'),
+            'Requests' => app_path('Http/Requests'),
+            'Jobs' => app_path('Jobs'),
+            'Models' => app_path('Models'),
+            'Processors' => app_path('Processors'),
+            'Providers' => app_path('Providers'),
+            'Repositories' => app_path('Repositories'),
+            'Services' => app_path('Services'),
+            'Bootstrap' => base_path('bootstrap'),
+            'Config' => base_path('config'),
             'Migrations' => database_path('migrations'),
             'Seeders' => database_path('seeders'),
             'Factories' => database_path('factories'),
-            'Bootstrap' => base_path('Bootstrap'),
-            'Config' => base_path('config'),
             'Routes' => base_path('routes'),
-            'Tests' => base_path('Tests'),
             'Resources_views_pdf' => base_path('resources/views/pdf'),
-            //    'Resources_view' => base_path('resources/views'),
-            //    'Resources_view_layouts' => base_path('resources/views/layouts'),
-            //    'Resources_view_layouts_main' => base_path('resources/views/layouts_main'),
-            //    'Resources_view_main' => base_path('resources/views/main'),
-            //    'Resources_view_requests' => base_path('resources/views/requests'),
-            //    'Resources_view_services' => base_path('resources/views/services'),
-            //    'Resources_view_users' => base_path('resources/views/users'),
-            //    'Resources_view_settings' => base_path('resources/views/setting'),
-            //    'Lang_ar' => base_path('resources/lang/ar'),
-            //    'Lang_en' => base_path('resources/lang/en'),
             'ApiCollections' => base_path('api-collections'),
+            'Tests' => base_path('tests'),
         ];
 
         foreach ($sections as $sectionName => $path) {
             if (! File::exists($path)) {
                 $this->warn("$sectionName directory not found, skipping...");
-
                 continue;
             }
 
             $isYamlSection = $sectionName === 'ApiCollections';
+            $isTestSection = $sectionName === 'Tests';
 
             $files = File::allFiles($path);
-            $files = array_filter($files, function ($file) use ($sectionName, $isYamlSection) {
+            $files = array_filter($files, function ($file) use ($isYamlSection, $isTestSection) {
+                $ext = $file->getExtension();
+
                 if ($isYamlSection) {
-                    return in_array($file->getExtension(), ['yaml', 'yml']);
-                }
-                if ($sectionName === 'Migrations') {
-                    return $file->getExtension() === 'php';
+                    return in_array($ext, ['yaml', 'yml']);
                 }
 
-                return $file->getExtension() == 'php';
+                if ($isTestSection) {
+                    return in_array($ext, ['php', 'js']);
+                }
+
+                return $ext === 'php';
             });
 
             usort($files, function ($a, $b) {
@@ -86,13 +77,13 @@ class GenerateFullProjectCompact extends Command
             foreach ($files as $file) {
                 $filename = str_replace(base_path().'/', '', $file->getRealPath());
                 $fileContent = File::get($file->getRealPath());
+                $ext = $file->getExtension();
 
-                if ($isYamlSection) {
-                    // YAML
+                if ($isYamlSection || $ext === 'js') {
                     $fileContent = preg_replace('/#.*$/m', '', $fileContent);
+                    $fileContent = preg_replace('/\/\/.*$/m', '', $fileContent);
                     $fileContent = preg_replace('/^\s*$(?:\r\n?|\n)/m', '', $fileContent);
                 } else {
-                    // PHP
                     $fileContent = str_replace(['<?php', '?>'], '', $fileContent);
                     $fileContent = preg_replace('/^use .*;/m', '', $fileContent);
                     $fileContent = preg_replace('/^declare\(.*\);/m', '', $fileContent);
@@ -112,6 +103,24 @@ class GenerateFullProjectCompact extends Command
 
                 $content .= "// ===== $filename =====\n";
                 $content .= $fileContent."\n";
+            }
+        }
+
+        $rootFiles = [
+            '.env',
+            'Dockerfile',
+            'docker-compose.yml',
+            'docker-compose_redis.yml',
+            'vite.config.js',
+            'package.json'
+        ];
+
+        $content .= "\n// === [Root Environment & Docker Files] ===\n";
+        foreach ($rootFiles as $rootFile) {
+            $filePath = base_path($rootFile);
+            if (File::exists($filePath)) {
+                $content .= "// ===== $rootFile =====\n";
+                $content .= File::get($filePath)."\n";
             }
         }
 
