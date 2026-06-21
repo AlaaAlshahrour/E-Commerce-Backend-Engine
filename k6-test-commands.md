@@ -4,7 +4,17 @@
 > Prepend `sudo` to sudo docker/k6 commands if your machine requires it.
 
 ---
+### PDF GENERATE
+```bash
+ sudo mv storage/app/private/public/invoices/invoice-1.pdf ~/Desktop/
+```
+```bash
+sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
+```
 
+```bash
+k6 run tests/k6-final/checkout-pdf.js
+```
 ## Race Conditions — Checkout
 
 ### Double Checkout
@@ -14,7 +24,8 @@
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
 k6 run tests/k6-final/double-checkout-unsafe.js
 ```
-```bach
+
+```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
 k6 run tests/k6-final/double-checkout-safe.js
@@ -29,7 +40,7 @@ k6 run tests/k6-final/double-checkout-safe.js
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceSameProductSeeder
 k6 run tests/k6-final/same-product-unsafe.js
 ```
-```bach
+```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceSameProductSeeder
 k6 run tests/k6-final/same-product-safe.js
@@ -44,7 +55,7 @@ k6 run tests/k6-final/same-product-safe.js
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceRetrySeeder
 k6 run tests/k6-final/retry-race-unsafe.js
 ```
-```bach
+```bash
 # safe (optimistic lock + retry)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceRetrySeeder
 k6 run tests/k6-final/retry-race-safe.js
@@ -61,7 +72,7 @@ k6 run tests/k6-final/retry-race-safe.js
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=AcidTestSeeder
 k6 run tests/k6-final/acid-unsafe.js
 ```
-```bach
+```bash
 # safe (full rollback — pristine DB)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=AcidTestSeeder
 k6 run tests/k6-final/acid-safe.js
@@ -86,7 +97,7 @@ sudo docker compose exec app3 php artisan config:clear
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceDoubleCheckoutSeeder
 k6 run tests/k6-final/multinode-double-checkout.js
 ```
-```bach
+```bash
 # fixed: shared redis cache
 # 2. Set CACHE_DRIVER: redis in sudo docker-compose.yml
 sudo docker compose down && sudo docker compose up -d
@@ -117,7 +128,7 @@ k6 run tests/k6-final/add-to-cart.js
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceCartUpdateSeeder
 k6 run tests/k6-final/cart-update-unsafe.js
 ```
-```bach
+```bash
 # safe
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceCartUpdateSeeder
 k6 run tests/k6-final/cart-update-safe.js
@@ -134,7 +145,7 @@ k6 run tests/k6-final/cart-update-safe.js
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceInventoryAdminCustomerSeeder
 k6 run tests/k6-final/admin-inventory-race-unsafe.js
 ```
-```bach
+```bash
 # safe (admin blocked while checkout in progress)
 sudo docker compose exec app1 php artisan migrate:fresh --seed --seeder=RaceInventoryAdminCustomerSeeder
 k6 run tests/k6-final/admin-inventory-race-safe.js

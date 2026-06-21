@@ -67,7 +67,6 @@ class OrderService
                 'message' => "Cannot transition from {$order->status} to {$status}",
             ];
         }
-
         $updated = $this->orderRepository->updateStatus($order, $status);
 
         return ['success' => true, 'message' => 'Status updated successfully', 'data' => $updated];
@@ -77,6 +76,7 @@ class OrderService
     {
         $user = Auth::user();
         $cart = $user->cart;
+        Log::info("Order UNSAFE");
 
         if ($this->isCartEmpty($cart)) {
             return ['success' => false, 'message' => 'Cart is empty'];
@@ -306,11 +306,11 @@ class OrderService
             Log::info('Checkout execution time', [
                 'time_seconds' => $executionTime,
             ]);
-            if ($res['success']) {
-                GenerateInvoicePdfJob::dispatch(
-                    $res['data']['order']->id
-                );
-            }
+//            if ($res['success']) {
+//                GenerateInvoicePdfJob::dispatch(
+//                    $res['data']['order']->id
+//                );
+//            }
 
             return $res;
 
@@ -425,7 +425,7 @@ class OrderService
                     $order = $this->orderRepository->createOrder(
                         $user, $cart, $amount, $data, $cartItems, $inventories
                     );
-                    if($data['break-trans']){
+                    if($data['break-trans']?? false){
                         throw new \RuntimeException('Simulated crash mid-transaction');
                     }
                     $transaction = $this->makeTransaction($wallet, $amount, $order);
@@ -447,9 +447,6 @@ class OrderService
                     'time_seconds' => microtime(true) - $startTime,
                 ]);
 
-                if ($res['success']) {
-                    GenerateInvoicePdfJob::dispatch($res['data']['order']->id);
-                }
 
                 return $res;
             });
