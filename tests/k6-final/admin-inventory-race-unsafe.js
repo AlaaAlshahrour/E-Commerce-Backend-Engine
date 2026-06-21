@@ -53,7 +53,7 @@ export const options = {
     },
 };
 
-const BASE_URL = 'http://localhost';
+const BASE_URL = 'http://localhost:8080';
 const PRODUCT_ID = 301;
 
 const ADMIN_INCREMENT = 20;

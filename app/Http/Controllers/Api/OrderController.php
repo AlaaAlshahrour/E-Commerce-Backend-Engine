@@ -59,7 +59,7 @@ class OrderController extends Controller
         if(!isset($data['break-trans'])) $data['break-trans'] = null;
         try{
 
-        $result = $safe ? $this->orderService->checkoutSafeOptimized($data)
+        $result = $safe ? $this->orderService->checkoutSafe($data)
             : $this->orderService->checkoutUnsafe($data);
 
         if (!$result['success']) {

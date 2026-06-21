@@ -34,7 +34,7 @@ export const options = {
     },
 };
 
-const BASE_URL = 'http://localhost';
+const BASE_URL = 'http://localhost:8080';
 
 // ── Login once before any VU starts ──────────────────────────────────
 export function setup() {
