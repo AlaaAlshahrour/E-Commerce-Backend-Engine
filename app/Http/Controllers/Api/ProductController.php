@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -39,8 +40,6 @@ class ProductController extends Controller
             $query->where('name', 'like', "%{$request->search}%");
         }
 
-        // Cache Aside
-        // Generate cache key from relevant filters (page, category_id, min_price, max_price, search)
         $filters = [
             'page' => $request->get('page', 1),
             'category_id' => $request->get('category_id'),
@@ -59,7 +58,10 @@ class ProductController extends Controller
                 Redis::connection(config('cache.stores.redis.connection'))
                     ->sadd('products:list:keys', $cacheKey);
             } catch (\Exception $e) {
-                // If Redis tracking fails, silently continue to avoid breaking the API
+                Log::warning('Failed to add product list cache key to Redis set', [
+                    'exception' => $e,
+                    'cache_key' => $cacheKey,
+                ]);
             }
 
             $items = array_map(function ($model) {
@@ -77,7 +79,6 @@ class ProductController extends Controller
             ];
         });
 
-        // Cache Hit or Miss returns from Cache::remember
         return ResponseHelper::jsonResponse($products, 'Products retrieved successfully');
     }
 
@@ -101,7 +102,6 @@ class ProductController extends Controller
             'quantity' => 0,
         ]);
 
-        // Cache Invalidation
         $this->clearProductListCache();
 
         return ResponseHelper::jsonResponse($product, 'Product created successfully', 201);
@@ -112,7 +112,6 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        // Cache Aside for product detail
         $cacheKey = 'product:' . $product->id;
 
         // TTL: 10 minutes
@@ -145,7 +144,6 @@ class ProductController extends Controller
 
         $product->update($data);
 
-        // Cache Invalidation
         Cache::forget("product:{$product->id}");
         $this->clearProductListCache();
 
@@ -164,7 +162,6 @@ class ProductController extends Controller
 
         $product->delete();
 
-        // Cache Invalidation
         Cache::forget("product:{$product->id}");
         $this->clearProductListCache();
 
@@ -184,7 +181,9 @@ class ProductController extends Controller
             }
             $redis->del('products:list:keys');
         } catch (\Exception $e) {
-            // Ignore errors to ensure availability
+            Log::warning('Failed to clear product list cache keys', [
+                'exception' => $e,
+            ]);
         }
     }
 }

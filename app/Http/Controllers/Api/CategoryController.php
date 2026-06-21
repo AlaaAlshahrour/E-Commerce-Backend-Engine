@@ -8,6 +8,7 @@ use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 class CategoryController extends Controller
@@ -31,7 +32,6 @@ class CategoryController extends Controller
     {
         $category = Category::create($request->validated());
 
-        // Cache Invalidation
         Cache::forget('categories:all');
         $this->clearProductListCache();
 
@@ -53,7 +53,6 @@ class CategoryController extends Controller
     {
         $category->update($request->validated());
 
-        // Cache Invalidation
         Cache::forget('categories:all');
         $this->clearProductListCache();
 
@@ -67,7 +66,6 @@ class CategoryController extends Controller
     {
         $category->delete();
 
-        // Cache Invalidation
         Cache::forget('categories:all');
         $this->clearProductListCache();
         return ResponseHelper::jsonResponse(null, 'Category deleted successfully');
@@ -86,7 +84,10 @@ class CategoryController extends Controller
             }
             $redis->del('products:list:keys');
         } catch (\Exception $e) {
-            // Ignore errors to ensure availability
+            Log::warning('Error clearing product list cache', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
         }
     }
 }
