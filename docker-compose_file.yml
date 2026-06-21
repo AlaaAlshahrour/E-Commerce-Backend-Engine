@@ -171,6 +171,6 @@ networks:
 
 volumes:
     mysql-data:
-    app1-cache:
+    app1-cache:  
     app2-cache:
     app3-cache:

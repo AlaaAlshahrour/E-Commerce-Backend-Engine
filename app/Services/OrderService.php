@@ -422,7 +422,6 @@ class OrderService
                         }
                     }
 
-
                     $order = $this->orderRepository->createOrder(
                         $user, $cart, $amount, $data, $cartItems, $inventories
                     );

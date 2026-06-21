@@ -139,7 +139,7 @@ export default function (data) {
 
     const elapsed = ((Date.now() - startMs) / 1000).toFixed(2);
     const body    = JSON.parse(res.body);
-    const ok      = body.success === true;
+    const ok      =  body.successful === true;
     const icon    = ok ? '✅' : '❌';
     const result  = ok ? 'SUCCESS' : 'REJECTED';
 

@@ -1,6 +1,6 @@
 services:
 
-    # ?? Load Balancer ????????????????????????????
+    # ── Load Balancer ────────────────────────────
     loadbalancer:
         image: nginx:alpine
         container_name: lb-nginx
@@ -15,7 +15,7 @@ services:
         networks:
             - ecommerce-network
 
-    # ?? Node 1 ???????????????????????????????????
+    # ── Node 1 ───────────────────────────────────
     app1:
         build:
             context: .
@@ -33,12 +33,11 @@ services:
             DB_PASSWORD: secret
             REDIS_HOST: redis
             REDIS_PORT: 6379
-            CACHE_DRIVER: file
-            CACHE_STORE: file
+            CACHE_DRIVER: redis
+            CACHE_STORE: redis
         volumes:
             - .:/var/www
             - /var/run/docker.sock:/var/run/docker.sock
-            - app1-cache:/var/www/storage/framework/cache
         expose:
             - "9000"
         networks:
@@ -57,7 +56,7 @@ services:
         networks:
             - ecommerce-network
 
-    # ?? Node 2 ???????????????????????????????????
+    # ── Node 2 ───────────────────────────────────
     app2:
         build:
             context: .
@@ -75,13 +74,12 @@ services:
             DB_PASSWORD: secret
             REDIS_HOST: redis
             REDIS_PORT: 6379
-            CACHE_DRIVER: file
-            CACHE_STORE: file
+            CACHE_DRIVER: redis
+            CACHE_STORE: redis
+
         volumes:
             - .:/var/www
             - /var/run/docker.sock:/var/run/docker.sock
-            - app2-cache:/var/www/storage/framework/cache  # ← isolated cache
-
         expose:
             - "9000"
         networks:
@@ -100,7 +98,7 @@ services:
         networks:
             - ecommerce-network
 
-    # ?? Node 3 ???????????????????????????????????
+    # ── Node 3 ───────────────────────────────────
     app3:
         build:
             context: .
@@ -118,13 +116,12 @@ services:
             DB_PASSWORD: secret
             REDIS_HOST: redis
             REDIS_PORT: 6379
-            CACHE_DRIVER: file
-            CACHE_STORE: file
+            CACHE_DRIVER: redis
+            CACHE_STORE: redis
+
         volumes:
             - .:/var/www
             - /var/run/docker.sock:/var/run/docker.sock
-            - app3-cache:/var/www/storage/framework/cache  # ← isolated cache
-
         expose:
             - "9000"
         networks:
@@ -143,7 +140,7 @@ services:
         networks:
             - ecommerce-network
 
-    # ?? MySQL ?????????????????????????????????????
+    # ── MySQL ─────────────────────────────────────
     mysql:
         image: mysql:8.0
         container_name: ecommerce-mysql
@@ -158,7 +155,7 @@ services:
         networks:
             - ecommerce-network
 
-    # ?? Redis ?????????????????????????????????????
+    # ── Redis ─────────────────────────────────────
     redis:
         image: redis:alpine
         container_name: ecommerce-redis
@@ -171,6 +168,3 @@ networks:
 
 volumes:
     mysql-data:
-    app1-cache:
-    app2-cache:
-    app3-cache:

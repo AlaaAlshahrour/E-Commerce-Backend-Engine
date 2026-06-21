@@ -104,7 +104,7 @@ export default function (data) {
     );
 
     const body   = JSON.parse(res.body);
-    const ok     = body.success === true;
+    const ok     = body.successful === true;
     const icon   = ok ? '✅' : '❌';
     const status = ok ? 'SUCCESS  ' : 'FAILED   ';
 
