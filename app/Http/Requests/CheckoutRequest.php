@@ -26,6 +26,7 @@ class CheckoutRequest extends FormRequest
             'shipping_address' => 'required|string|min:5|max:500',
             'safe'=>'sometimes',
             'break-trans'=>'sometimes',
+            'pdfs'=>'sometimes',
         ];
     }
 }

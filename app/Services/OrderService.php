@@ -495,7 +495,7 @@ class OrderService
         $user = Auth::user();
 
         $perUserLock = Cache::lock("checkout:user:{$user->id}");
-
+        Log::info('hEYYYYYYYYYYYYYYYYYYYYYY');
         if (!$perUserLock->get()) {
             return [
                 'success' => false,

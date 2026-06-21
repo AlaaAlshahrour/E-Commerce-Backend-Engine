@@ -34,7 +34,7 @@ export const options = {
     },
 };
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'http://localhost';
 
 // ── Login once before any VU starts ──────────────────────────────────
 export function setup() {
@@ -66,11 +66,11 @@ export default function (data) {
     console.log('══════════════════════════════════════════');
 
     const res = http.post(
-        `${BASE_URL}/api/orders/checkout?safe=1&pdf-sync=1`,
+        `${BASE_URL}/api/orders/checkout?pdfs=1&safe=0`,
         JSON.stringify({ shipping_address: 'Damascus' }),
         { headers }
     );
-
+    console.log(res)
     const b = JSON.parse(res.body);
 
     console.log(`  HTTP Status : ${res.status}`);
