@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\CartItem;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 use Illuminate\Database\Eloquent\Collection;
@@ -54,6 +55,7 @@ class OrderRepository
 
         foreach ($cartItems as $item) {
             $inventories->get($item->product_id)->decrement('quantity', $item->quantity);
+            Cache::forget("product:{$item->product_id}");
         }
 
         $order->load('orderItems.product:id,name,photo_url');
