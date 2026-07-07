@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Providers;
+namespace config\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;

@@ -1,6 +1,6 @@
 <?php
 
-use App\Providers\AppServiceProvider;
+use config\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
